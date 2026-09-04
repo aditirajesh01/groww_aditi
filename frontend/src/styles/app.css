@@ -420,12 +420,11 @@ main { padding-block-start: 0; }
   flex-wrap: wrap;
 }
 .section__title {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  letter-spacing: var(--tracking-snug);
+  color: var(--foreground);
+  font-weight: 650;
   margin: 0;
 }
 .section__note { font-size: 0.8125rem; color: var(--ink-3); }
@@ -537,7 +536,7 @@ main { padding-block-start: 0; }
 
 /* --- card body ------------------------------------------------------------ */
 
-.card__body { padding: var(--space-4) var(--space-5) var(--space-4); min-width: 0; }
+.card__body { padding: var(--space-5) var(--space-6) var(--space-5); min-width: 0; }
 
 .card__top {
   display: flex;
@@ -1171,9 +1170,10 @@ main { padding-block-start: 0; }
   border: 1px solid var(--hair);
   border-radius: var(--radius-large);
   background: var(--surface);
-  padding: var(--space-5);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-small);
 }
-.panel__title { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--space-4); }
+.panel__title { font-family: var(--font-sans); font-size: 1rem; font-weight: 650; letter-spacing: var(--tracking-snug); color: var(--foreground); margin: 0 0 var(--space-4); }
 
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 0.4rem var(--space-4); font-size: 0.8125rem; align-items: baseline; }
 .kv dt { color: var(--ink-2); }

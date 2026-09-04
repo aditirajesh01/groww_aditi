@@ -14,14 +14,12 @@ export function DigestHeader({
   shown,
   suppressed,
   quietCount,
-  watchedCount,
   cleared,
 }: {
   digest: DigestResponse;
   shown: number;
   suppressed: number;
   quietCount: number;
-  watchedCount: number;
   cleared: number;
 }) {
   const reduced = useReducedMotion();
@@ -49,29 +47,6 @@ export function DigestHeader({
             Your first digest.
             <br />
             {shown} {shown === 1 ? "change" : "changes"} cleared the two-factor gate.
-          </>
-        )}
-      </motion.p>
-
-      <motion.p
-        className="digest-head__sub"
-        initial={reduced ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={reduced ? { duration: 0 } : { duration: 0.5, delay: 0.12 }}
-      >
-        {watchedCount} symbols checked.{" "}
-        {suppressed > 0 ? (
-          <>
-            <strong>{suppressed}</strong> passed the gate and were held back — the attention budget
-            is {cap} and everything competes for a slot.{" "}
-          </>
-        ) : (
-          <>Nothing was held back. </>
-        )}
-        {quietCount > 0 && (
-          <>
-            {quietCount} moved but stayed one factor short of promotion; they are listed at the
-            bottom rather than hidden.
           </>
         )}
       </motion.p>

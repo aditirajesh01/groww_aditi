@@ -72,7 +72,6 @@ export function Sidebar() {
 
       <div className="sidebar__foot">
         <span className="sidebar__mode">{store.mode === "fixtures" ? "Fixture data" : "Live API"}</span>
-        <span className="sidebar__foot-note">No recommendations. Every claim is evidence-linked.</span>
       </div>
     </aside>
   );

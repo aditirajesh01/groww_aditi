@@ -21,11 +21,6 @@ export function WatchlistScreen() {
         <h1 className="digest-head__lead" style={{ margin: 0 }}>
           What you watch, and why.
         </h1>
-        <p className="digest-head__sub">
-          Materiality is personal. Position size, cost basis, how long a symbol has been on the list
-          and — above all — the reason you wrote down are what decide whether a 4% move is your
-          front page or somebody else&rsquo;s noise.
-        </p>
       </header>
 
       <section className="section">

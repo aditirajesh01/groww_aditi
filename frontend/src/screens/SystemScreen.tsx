@@ -22,11 +22,8 @@ export function SystemScreen() {
     <div className="wrap">
       <header className="digest-head">
         <h1 className="digest-head__lead" style={{ margin: 0 }}>
-          What the system knows about itself.
+          System
         </h1>
-        <p className="digest-head__sub">
-          Every number in this product carries provenance and an as-of stamp. So does the product.
-        </p>
       </header>
 
       <section className="section">

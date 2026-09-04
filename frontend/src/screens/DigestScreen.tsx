@@ -63,7 +63,6 @@ export function DigestScreen() {
           shown={store.items.length}
           suppressed={store.budget.suppressed}
           quietCount={digest.quiet.length}
-          watchedCount={(store.watchlist?.entries.length ?? 0) + digest.quiet.length}
           cleared={store.cleared}
         />
       </div>
@@ -83,9 +82,6 @@ export function DigestScreen() {
               <h2 className="section__title" style={{ color: "var(--brass)" }}>
                 Corrections
               </h2>
-              <span className="section__note">
-                Always shown. Never competes for a slot in the attention budget.
-              </span>
             </div>
             <ul className="stack">
               <AnimatePresence initial={false} custom={exitMode}>
@@ -113,9 +109,6 @@ export function DigestScreen() {
         {store.items.length > 0 && (
           <div className="section__head">
             <h2 className="section__title">Ranked by attention</h2>
-            <span className="section__note">
-              Every item below cleared the two-factor confirmation gate.
-            </span>
             {store.items.length > 1 && (
               <button
                 type="button"

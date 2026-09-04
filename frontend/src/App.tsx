@@ -72,15 +72,6 @@ export function App() {
             </motion.div>
           </AnimatePresence>
         </main>
-
-        <footer className="foot">
-          <div className="wrap" style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap", alignItems: "center" }}>
-            <p className="foot__note" style={{ margin: 0 }}>
-              No recommendations, targets, or buy/sell language anywhere in this product. Every claim
-              on a card traces to dated evidence you can open.
-            </p>
-          </div>
-        </footer>
       </div>
 
       <Toasts toasts={store.toasts} onDismiss={store.dismissToast} />
