@@ -19,9 +19,9 @@
     "verbatimModuleSyntax": true,
     "baseUrl": ".",
     "paths": {
-      "@contracts/*": ["../contracts/*"],
+      "@contracts/*": ["./contracts/*"],
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "../contracts/types.ts"]
+  "include": ["src", "./contracts/types.ts"]
 }

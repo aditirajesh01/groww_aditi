@@ -1,7 +1,3 @@
-import { useEffect, useRef } from "react";
-import { animate, useReducedMotion } from "motion/react";
-import { EASE_OUT } from "@/lib/motion";
-
 interface Props {
   value: number;
   /** Decimal places. */
@@ -24,11 +20,13 @@ const grouper = new Intl.NumberFormat("en-IN", {
 });
 
 /**
- * Numbers count up rather than snapping into place. The reason is not delight:
- * a price that animates from a neutral origin makes the *direction* and the
- * *magnitude* legible before you have read the digits. Reduced motion writes
- * the final value immediately, and the DOM text is written through a ref so a
- * 60fps count does not trigger 60 React renders.
+ * Renders a formatted number. Previously animated a count-up via an
+ * imperative `motion` `animate()` call in a `useEffect`, written straight to
+ * the DOM through a ref to avoid a 60fps React re-render. That worked in the
+ * Vite dev server but the animation never ran at all once bundled for
+ * production (no error, no update -- every card silently showed 0 / 0.00%
+ * on the live deploy). Not worth chasing the bundler-specific cause under
+ * demo time pressure: a plain, correct render beats a broken animation.
  */
 export function Ticker({
   value,
@@ -37,54 +35,18 @@ export function Ticker({
   suffix = "",
   prefix = "",
   grouped = false,
-  duration = 0.85,
   className,
-  from,
 }: Props) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const current = useRef<number | null>(null);
-  const reduced = useReducedMotion();
-
-  const fmt = (n: number) => {
-    const abs = Math.abs(n);
-    const body =
-      grouped && decimals === 2
-        ? grouper.format(abs)
-        : abs.toFixed(decimals);
-    const sign = signed ? (n > 0 ? "+" : n < 0 ? "−" : "") : n < 0 ? "−" : "";
-    return `${sign}${prefix}${body}${suffix}`;
-  };
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    const start = current.current ?? from ?? (signed ? 0 : value * 0.985);
-
-    if (reduced || start === value) {
-      node.textContent = fmt(value);
-      current.current = value;
-      return;
-    }
-
-    const controls = animate(start, value, {
-      duration,
-      ease: EASE_OUT,
-      onUpdate: (v) => {
-        node.textContent = fmt(v);
-        current.current = v;
-      },
-      onComplete: () => {
-        node.textContent = fmt(value);
-        current.current = value;
-      },
-    });
-    return () => controls.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, reduced, decimals, signed, suffix, prefix, grouped, duration]);
+  const abs = Math.abs(value);
+  const body = grouped && decimals === 2 ? grouper.format(abs) : abs.toFixed(decimals);
+  const sign = signed ? (value > 0 ? "+" : value < 0 ? "−" : "") : value < 0 ? "−" : "";
 
   return (
-    <span ref={ref} className={className}>
-      {fmt(reduced ? value : (from ?? (signed ? 0 : value)))}
+    <span className={className}>
+      {sign}
+      {prefix}
+      {body}
+      {suffix}
     </span>
   );
 }
