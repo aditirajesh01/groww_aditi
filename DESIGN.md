@@ -11,7 +11,8 @@ Status: design agreed, implementation pending.
 | Decision | Choice |
 |---|---|
 | Data source | Real API behind an adapter, **plus** a deterministic replay simulator |
-| Stack | Python / FastAPI + Postgres + Redis(Valkey) + React |
+| Stack | Python / FastAPI + Postgres + Redis(Valkey) + React 19 + Vite + Oat CSS + Motion |
+| LLM | Gemini free tier -> OpenRouter free -> deterministic template; Claude documented as the production path |
 | Scope | Watch thesis + contradiction detection + all 4 signal types |
 | Target | 10,000 users, with a stated path to 10M |
 
@@ -206,8 +207,41 @@ Gating chain before any generation: symbol passed the global gate -> user has a 
 - **Cache-stampede rule:** a cache entry is only readable once the first response *begins streaming*. N parallel requests with an identical prefix all pay full price. So on the nightly fan-out: send one request, await first token, then fire the rest.
 - **Never put anything volatile before the last `cache_control` breakpoint** — a timestamp or per-request id in the system prompt silently invalidates everything. Verify with `usage.cache_read_input_tokens`; if it is 0 across repeated calls, something is invalidating.
 
-### Model choice
-Default **`claude-opus-5`** everywhere, `thinking: {type: "adaptive"}`, `output_config.effort` tuned per route (`low` for bulk summarisation, `high` for contradiction reasoning). If we ever want the bulk summariser cheaper, `claude-haiku-4-5` at $1/$5 takes that ~$70 line to ~$16 — but that is a quality tradeoff and a deliberate decision, not a default.
+### Provider decision: free tiers for the prototype
+
+The prototype runs entirely on free tiers, behind a `Provider` protocol so the production
+choice stays open.
+
+| Provider | Model | Free limits |
+|---|---|---|
+| Google Gemini (primary) | `gemini-2.5-flash` | ~10 RPM, ~500-1,500 RPD; permanent tier, no card |
+| OpenRouter (overflow) | ids ending `:free` | 20 RPM; 50 RPD at zero balance, 1,000 RPD after a one-time $10 |
+| Template (floor) | none | Deterministic summary composed from signal evidence |
+
+**The rate limit is not a constraint we worked around — it is the proof the architecture is right.**
+
+| Design | Calls/day | Fits a free tier? |
+|---|---|---|
+| Naive: summarise per user per view | ~200,000 | No — ~400x over |
+| Ours: per symbol-event, shared | ~800 | Yes, with room |
+
+A hard ceiling of ~1,500 requests/day is the most honest possible test of the symbol/user
+split. The naive design cannot be demonstrated at all at 10,000 users; ours runs the entire
+AI layer for free. The 10 RPM ceiling is also what forces the token bucket, quota tracker,
+circuit breaker and content-hash cache to be real rather than decorative.
+
+**The app must work with no API keys at all.** `template.py` composes a factual summary
+from `signals[].evidence[]`, so a reviewer who clones the repo and sets nothing still sees a
+complete product. This is the same degraded-but-correct principle as SUSPECT freshness in
+Sec. 8: when a dependency is unavailable, return the honest partial answer, never a blank
+card and never a confident guess.
+
+Claude (`claude-opus-5`, Batch API, prompt caching) remains the documented production path —
+the cost table above is what it looks like at ~$200/month for 10,000 users. Swapping is one
+implementation of the `Provider` protocol.
+
+### Model choice (production path)
+Were this production, default **`claude-opus-5`** everywhere, `thinking: {type: "adaptive"}`, `output_config.effort` tuned per route (`low` for bulk summarisation, `high` for contradiction reasoning). If we ever want the bulk summariser cheaper, `claude-haiku-4-5` at $1/$5 takes that ~$70 line to ~$16 — but that is a quality tradeoff and a deliberate decision, not a default.
 
 **Embeddings:** Anthropic does not ship an embeddings model; Voyage AI is the recommended provider and has **finance-domain models**, which is exactly the retrieval quality the thesis gate needs.
 
