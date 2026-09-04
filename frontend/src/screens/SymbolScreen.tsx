@@ -6,10 +6,9 @@ import { ChangeCard } from "@/components/ChangeCard";
 import { FreshnessChip } from "@/components/FreshnessChip";
 import { Sparkline } from "@/components/Sparkline";
 import { Ticker } from "@/components/Ticker";
-import { asOf, day } from "@/lib/format";
+import { asOf } from "@/lib/format";
 import { listVariants, cardVariants } from "@/lib/motion";
 import { href } from "@/state/router";
-import { useStore } from "@/state/store";
 
 const DELTA_TONE: Record<string, string> = {
   up: "text-success-600 dark:text-success-400",
@@ -19,7 +18,6 @@ const DELTA_TONE: Record<string, string> = {
 const toneOf = (n: number) => DELTA_TONE[n > 0 ? "up" : n < 0 ? "down" : "neutral"];
 
 export function SymbolScreen({ symbol }: { symbol: string }) {
-  const store = useStore();
   const reduced = useReducedMotion();
   const [detail, setDetail] = useState<SymbolDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +39,6 @@ export function SymbolScreen({ symbol }: { symbol: string }) {
       live = false;
     };
   }, [symbol]);
-
-  const entry = store.watchlist?.entries.find((e) => e.symbol === symbol);
 
   if (error) {
     return (
@@ -118,7 +114,6 @@ export function SymbolScreen({ symbol }: { symbol: string }) {
           >
             &ldquo;{detail.thesis}&rdquo;
           </motion.blockquote>
-          {entry?.thesis_added_at && <span className="mt-1.5 block text-xs text-gray-400">written {day(entry.thesis_added_at)}</span>}
         </section>
       )}
 
@@ -141,7 +136,7 @@ export function SymbolScreen({ symbol }: { symbol: string }) {
           <motion.ul className="flex flex-col gap-4" variants={listVariants(!!reduced)} initial="hidden" animate="shown">
             {detail.timeline.map((item, i) => (
               <motion.li key={item.event_id} variants={cardVariants(!!reduced)}>
-                <ChangeCard item={item} rank={i + 1} readOnly thesisAddedAt={entry?.thesis_added_at} />
+                <ChangeCard item={item} rank={i + 1} readOnly />
               </motion.li>
             ))}
           </motion.ul>

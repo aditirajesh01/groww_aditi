@@ -19,7 +19,6 @@ import { Ticker } from "./Ticker";
 interface Props {
   item: ChangeItem;
   rank: number;
-  thesisAddedAt?: string | null;
   onAck?: (item: ChangeItem) => void;
   onDismiss?: (item: ChangeItem, kind: SignalKind) => void;
   readOnly?: boolean;
@@ -46,7 +45,6 @@ function chipClass(active = false) {
 export function ChangeCard({
   item,
   rank,
-  thesisAddedAt,
   onAck,
   onDismiss,
   readOnly = false,
@@ -195,9 +193,7 @@ export function ChangeCard({
             </p>
           )}
 
-          {item.thesis_impact && (
-            <ThesisConfrontation impact={item.thesis_impact} thesisAddedAt={thesisAddedAt} />
-          )}
+          {item.thesis_impact && <ThesisConfrontation impact={item.thesis_impact} />}
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             <span
@@ -248,9 +244,6 @@ export function ChangeCard({
               >
                 Timeline
               </a>
-              <span className="ml-auto text-xs text-gray-400">
-                {canDismiss ? "swipe ← fewer · → read" : "swipe → to mark read"}
-              </span>
             </div>
           )}
 

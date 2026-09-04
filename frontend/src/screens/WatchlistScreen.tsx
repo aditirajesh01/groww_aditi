@@ -146,10 +146,7 @@ function WatchRow({ entry }: { entry: WatchEntry }) {
             </button>
           </div>
         ) : entry.thesis ? (
-          <>
-            <blockquote className="mt-1 text-sm italic text-gray-700 dark:text-gray-200">&ldquo;{entry.thesis}&rdquo;</blockquote>
-            {entry.thesis_added_at && <span className="mt-1 block text-xs text-gray-400">written {day(entry.thesis_added_at)}</span>}
-          </>
+          <blockquote className="mt-1 text-sm italic text-gray-700 dark:text-gray-200">&ldquo;{entry.thesis}&rdquo;</blockquote>
         ) : (
           <p className="mt-1 text-sm text-gray-400">
             No thesis on record. Contradiction checks stay off for {entry.symbol} until there is a belief to check against.

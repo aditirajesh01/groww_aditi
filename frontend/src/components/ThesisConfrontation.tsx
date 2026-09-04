@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { ThesisImpact } from "@/api/types";
-import { day } from "@/lib/format";
 
 const VERDICT_WORD: Record<ThesisImpact["verdict"], string> = {
   CONTRADICTS: "against it",
@@ -14,13 +13,7 @@ const BAR_COLOR: Record<ThesisImpact["verdict"], string> = {
   NEUTRAL: "bg-gray-400",
 };
 
-export function ThesisConfrontation({
-  impact,
-  thesisAddedAt,
-}: {
-  impact: ThesisImpact;
-  thesisAddedAt?: string | null;
-}) {
+export function ThesisConfrontation({ impact }: { impact: ThesisImpact }) {
   const reduced = useReducedMotion();
   const contradicts = impact.verdict === "CONTRADICTS";
 
@@ -43,7 +36,6 @@ export function ThesisConfrontation({
           <blockquote className="mt-1.5 text-[15px] font-medium italic leading-snug text-gray-700 dark:text-gray-200">
             &ldquo;{impact.thesis}&rdquo;
           </blockquote>
-          {thesisAddedAt && <span className="mt-1.5 block text-xs text-gray-400">added {day(thesisAddedAt)}</span>}
         </div>
 
         <div className="flex items-center justify-center px-2 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:py-0" aria-hidden="true">
@@ -79,7 +71,6 @@ export function ThesisConfrontation({
             {Math.round(impact.confidence * 100)}%
           </span>
         </span>
-        <span className="text-xs text-gray-400">Your hypothesis, checked against dated evidence. Not advice.</span>
       </div>
     </motion.section>
   );

@@ -54,9 +54,6 @@ export function DigestScreen() {
   const digest = store.digest;
   if (!digest) return null;
 
-  const thesisFor = (symbol: string) =>
-    store.watchlist?.entries.find((e) => e.symbol === symbol)?.thesis_added_at ?? null;
-
   const variants = cardVariants(!!reduced);
 
   return (
@@ -141,13 +138,7 @@ export function DigestScreen() {
                   exit="gone"
                   transition={reduced ? { duration: 0 } : spring}
                 >
-                  <ChangeCard
-                    item={item}
-                    rank={i + 1}
-                    thesisAddedAt={thesisFor(item.symbol)}
-                    onAck={onAck}
-                    onDismiss={onDismiss}
-                  />
+                  <ChangeCard item={item} rank={i + 1} onAck={onAck} onDismiss={onDismiss} />
                 </motion.li>
               ))}
             </AnimatePresence>
