@@ -1,0 +1,17 @@
+name: Keep backend warm
+
+on:
+  schedule:
+    # Every 10 minutes, comfortably under Render's ~15-minute idle sleep threshold.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          curl -sf --max-time 100 https://delta-watchlist-backend.onrender.com/api/v1/health \
+            && echo "backend is warm" \
+            || echo "ping failed or backend was cold-starting"
