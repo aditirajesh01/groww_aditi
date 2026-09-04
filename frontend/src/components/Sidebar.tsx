@@ -43,7 +43,7 @@ export function Sidebar() {
           </svg>
         </span>
         <span className="flex flex-col leading-tight">
-          <span className="text-base font-bold tracking-tight text-gray-800 dark:text-white">Watchlist</span>
+          <span className="text-base font-bold tracking-tight text-gray-800 dark:text-white">Delta</span>
           <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Changelog · Read Cursor</span>
         </span>
       </a>
