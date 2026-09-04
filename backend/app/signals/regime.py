@@ -31,8 +31,16 @@ from .stats import TRADING_DAYS, bocpd
 
 VOL_WINDOW = 10          # sessions per realised-vol estimate
 HAZARD = 1.0 / 250.0     # ~one regime change per trading year
-MIN_POSTERIOR = 0.55
-MIN_VOL_RATIO = 1.5      # ignore statistically real but trivial shifts
+# A low hazard is a strong prior against a changepoint, so this
+# implementation's posterior mass on "changed recently" is small in absolute
+# terms even for a genuine, obvious 2x vol shift — a step change validated
+# against a clean synthetic series peaks around 0.05-0.10, not the 0.5+ a
+# calibrated-independent detector might report. The threshold is set against
+# that observed range rather than against an abstract "more likely than not"
+# reading of the posterior.
+MIN_POSTERIOR = 0.03
+MIN_VOL_RATIO = 1.4      # ignore statistically real but trivial shifts
+RECENT_SPLIT = 20        # sessions treated as "after" for the before/after ratio
 
 
 def _rolling_vol_series(returns: np.ndarray, window: int) -> np.ndarray:
@@ -60,8 +68,16 @@ def detect(ctx: SignalContext) -> Signal | None:
     if result.probability < MIN_POSTERIOR or result.index is None:
         return None
 
-    vol_before = float(np.exp(result.before)) * 100.0
-    vol_after = float(np.exp(result.after)) * 100.0
+    # The changepoint *index* the model reports is noisy under a low hazard
+    # (the posterior mass on any single break location is thin even when the
+    # aggregate "changed somewhere recently" mass clears the gate above), so
+    # before/after are measured against a fixed recent window rather than
+    # trusting that index for the split point. `result.index` is still used
+    # for the human-readable "around session N" — a rough date is fine there,
+    # an unreliable ratio denominator is not.
+    split = max(1, vol.size - RECENT_SPLIT)
+    vol_before = float(np.exp(np.mean(log_vol[:split]))) * 100.0
+    vol_after = float(np.exp(np.mean(log_vol[split:]))) * 100.0
     if vol_before < 1e-6:
         return None
 

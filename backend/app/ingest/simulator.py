@@ -93,7 +93,7 @@ SCENARIO_NOTES = {
 INDEX_RETURN_AT_S0 = -0.0042
 
 DRIFT_SESSIONS = 19          # SUNPHARMA
-REGIME_ONSET_BACK = 7        # HDFCBANK: vol doubles this many sessions before S0
+REGIME_ONSET_BACK = 22       # HDFCBANK: vol doubles this many sessions before S0
 WIPRO_EX_BACK = 2            # bonus ex-date, sessions before S0
 WIPRO_NOTICE_LAG = 1         # notice arrives this many sessions after ex-date
 
@@ -185,10 +185,11 @@ class Simulator:
         # -- SUNPHARMA: slow drift + decoupling from its sector -------------
         if symbol == "SUNPHARMA" and 0 <= back < DRIFT_SESSIONS:
             gd = _rng("drift", symbol, i)
-            # -0.43%/session median, noise small enough that no single session
-            # trips a 1.2% threshold. Cumulative ~= -8%.
-            idio = -0.0043 + float(gd.normal(0.0, 0.0022))
-            idio = float(np.clip(idio, -0.0115, 0.0060))
+            # -0.75%/session median, noise small enough that no single session
+            # trips a 1.5% threshold. Cumulative ~= -13%, clearing the drift
+            # detector's z-gate against the stock's ordinary (pre-window) vol.
+            idio = -0.0075 + float(gd.normal(0.0, 0.0022))
+            idio = float(np.clip(idio, -0.0140, 0.0030))
             # The correlation break: it stops loading on its sector factor.
             beta_load = sp.beta * 0.12
             r_sec = r_sec * 0.10
@@ -456,6 +457,26 @@ class Simulator:
 
     def scenario_notes(self) -> dict[str, str]:
         return dict(SCENARIO_NOTES)
+
+    def watch_flow(self, symbol: str) -> list[tuple[int, int, int]]:
+        """Aggregate, k-anonymised watchlist adds/removes — DESIGN.md §2(5).
+
+        Real flow comes from `models.WatchFlow`, populated by actual user
+        activity; at demo scale there is no such population, so HDFCBANK's
+        scenario (regime change *confirmed by crowd flow*, per
+        SCENARIO_NOTES) is seeded here the same way every other scripted
+        scenario in this file is: deterministically, keyed off `session_index`,
+        so a fresh clone reproduces it without a separate seed step.
+        """
+        if symbol != "HDFCBANK":
+            return []
+        s0 = self.s0
+        g = _rng("crowd", symbol)
+        trailing = [
+            (s0 - k, int(185 + g.normal(0.0, 22.0)), 6200) for k in range(7, 0, -1)
+        ]
+        current = (s0, 640, 6200)  # ~3.4x the trailing median, well past MIN_RATIO
+        return trailing + [current]
 
 
 _sim: Simulator | None = None
