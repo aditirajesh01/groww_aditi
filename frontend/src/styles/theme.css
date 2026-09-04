@@ -1,0 +1,109 @@
+/* ---------------------------------------------------------------------------
+   Design tokens layered on top of Oat.
+
+   Oat themes through `light-dark()` driven by `color-scheme`, so pinning a
+   theme is a one-property job and both modes are first-class by construction —
+   there is no "invert the dark one" codepath anywhere in this file.
+
+   Unlayered rules beat Oat's @layer theme, so these overrides simply win.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* --- surfaces -------------------------------------------------------- */
+  --background: light-dark(#faf9f6, #0a0c0f);
+  --surface: light-dark(#ffffff, #111419);
+  --surface-2: light-dark(#f4f2ed, #161a20);
+  --surface-3: light-dark(#ebe8e1, #1c212a);
+  --card: var(--surface);
+
+  /* --- ink -------------------------------------------------------------- */
+  --foreground: light-dark(#14171c, #e7eaef);
+  --card-foreground: var(--foreground);
+  --ink-2: light-dark(#5a636e, #98a2b0);
+  --ink-3: light-dark(#8a929c, #6a7482);
+
+  /* --- lines ------------------------------------------------------------ */
+  --hair: light-dark(rgba(20, 23, 28, 0.10), rgba(231, 234, 239, 0.09));
+  --hair-strong: light-dark(rgba(20, 23, 28, 0.20), rgba(231, 234, 239, 0.18));
+  --border: var(--hair);
+  --input: var(--hair-strong);
+  --ring: light-dark(#a5741a, #e0a83c);
+
+  /* --- accents ---------------------------------------------------------- */
+  --brass: light-dark(#8a6212, #e0a83c);
+  --brass-dim: light-dark(rgba(138, 98, 18, 0.12), rgba(224, 168, 60, 0.14));
+  --pos: light-dark(#136b43, #4ec98a);
+  --neg: light-dark(#b23325, #f2685f);
+  --neutral-mark: light-dark(#5a636e, #98a2b0);
+  --ember: light-dark(#b1361c, #ff7d5c);
+  --ember-dim: light-dark(rgba(177, 54, 28, 0.09), rgba(255, 125, 92, 0.11));
+  --info: light-dark(#1f5f8b, #6fb3e0);
+
+  /* severity ramp for the attention meter — cool → brass → ember */
+  --sev-low: light-dark(#8a929c, #5d6875);
+  --sev-moderate: light-dark(#1f5f8b, #6fb3e0);
+  --sev-high: var(--brass);
+  --sev-critical: var(--ember);
+
+  --primary: light-dark(#14171c, #e7eaef);
+  --primary-foreground: light-dark(#faf9f6, #0a0c0f);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--ink-2);
+  --danger: var(--neg);
+  --success: var(--pos);
+  --warning: var(--brass);
+
+  /* --- type ------------------------------------------------------------- */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-display: ui-serif, "Iowan Old Style", "Source Serif 4", "Charter",
+    "Georgia", "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+  --text-regular: 0.9375rem;
+
+  --radius-medium: 0.5rem;
+  --radius-large: 0.875rem;
+
+  --shadow-small: light-dark(0 1px 2px rgb(20 23 28 / 0.05), none);
+  --shadow-medium: light-dark(0 2px 8px -2px rgb(20 23 28 / 0.10), 0 0 0 1px rgb(0 0 0 / 0.25));
+  --shadow-large: light-dark(
+    0 10px 30px -12px rgb(20 23 28 / 0.22),
+    0 12px 34px -14px rgb(0 0 0 / 0.7)
+  );
+
+  /* --- motion ----------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 120ms var(--ease-out);
+  --transition: 220ms var(--ease-out);
+
+  --rail: 3.25rem;
+  --gutter: clamp(1rem, 4vw, 2rem);
+  --measure: 50rem;
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* Dark mode is not an inversion: the paper warmth is dropped, the hairlines get
+   lighter rather than darker, and shadows become rings because a shadow on a
+   near-black ground is invisible. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-small: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   prefers-reduced-motion. Motion's own hooks handle the JS-driven animations;
+   this covers everything CSS owns. Not optional.
+-------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
