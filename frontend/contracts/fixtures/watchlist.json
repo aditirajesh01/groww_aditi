@@ -1,0 +1,21 @@
+{
+  "unread_total": 4,
+  "entries": [
+    { "symbol": "TATAMOTORS", "name": "Tata Motors", "thesis": "watching for margin recovery", "thesis_added_at": "2026-06-12T05:00:00Z",
+      "position": { "qty": 40, "avg_cost": 690.00 }, "muted_kinds": [], "added_at": "2026-06-12T05:00:00Z", "last_seen_seq": 184100,
+      "price": { "last": 712.40, "change_abs": -47.10, "change_pct": -6.20, "idiosyncratic_pct": -5.40, "since_last_seen_pct": -8.10, "vol_z": 3.1, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true } },
+    { "symbol": "SUNPHARMA", "name": "Sun Pharmaceutical", "thesis": "defensive hedge against my IT exposure", "thesis_added_at": "2026-07-02T05:00:00Z",
+      "position": null, "muted_kinds": ["CROWD_FLOW"], "added_at": "2026-07-02T05:00:00Z", "last_seen_seq": 184100,
+      "price": { "last": 1584.20, "change_abs": -3.10, "change_pct": -0.20, "idiosyncratic_pct": -0.11, "since_last_seen_pct": -3.40, "vol_z": 0.2, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true } },
+    { "symbol": "HDFCBANK", "name": "HDFC Bank", "thesis": null, "thesis_added_at": null,
+      "position": { "qty": 15, "avg_cost": 1710.00 }, "muted_kinds": [], "added_at": "2026-02-19T05:00:00Z", "last_seen_seq": 184100,
+      "price": { "last": 1943.80, "change_abs": 12.40, "change_pct": 0.64, "idiosyncratic_pct": 1.02, "since_last_seen_pct": 1.90, "vol_z": 1.4, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true } },
+    { "symbol": "ETERNAL", "name": "Eternal", "thesis": "want it under 240", "thesis_added_at": "2026-08-01T05:00:00Z",
+      "position": null, "muted_kinds": [], "added_at": "2026-08-01T05:00:00Z", "last_seen_seq": 184100,
+      "price": { "last": 259.10, "change_abs": 0.00, "change_pct": 0.00, "idiosyncratic_pct": null, "since_last_seen_pct": null, "vol_z": 0.0, "currency": "INR" },
+      "provenance": { "source": "nse+yahoo", "as_of": "2026-09-04T12:41:00Z", "freshness": "SUSPECT", "disagreement_pct": 2.3, "corporate_action_adjusted": true } }
+  ]
+}

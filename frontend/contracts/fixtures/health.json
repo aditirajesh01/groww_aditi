@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "market_data": { "source": "nse", "freshness": "LIVE", "as_of": "2026-09-04T12:44:55Z" },
+  "llm_providers": [
+    { "name": "gemini",     "state": "OK",               "used_today": 213, "daily_cap": 500,  "resets_at": "2026-09-05T00:00:00Z" },
+    { "name": "openrouter", "state": "RATE_LIMITED",     "used_today": 47,  "daily_cap": 50,   "resets_at": "2026-09-05T00:00:00Z" },
+    { "name": "template",   "state": "OK",               "used_today": 12,  "daily_cap": 0,    "resets_at": null }
+  ],
+  "cache_hit_rate_24h": 0.83
+}

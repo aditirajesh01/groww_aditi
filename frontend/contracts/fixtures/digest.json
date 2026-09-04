@@ -1,0 +1,152 @@
+{
+  "generated_at": "2026-09-04T12:45:00Z",
+  "last_checked_at": "2026-08-31T03:30:00Z",
+  "market": { "state": "OPEN", "nifty_pct": -0.42, "as_of": "2026-09-04T12:44:55Z" },
+  "budget": { "cap": 5, "shown": 4, "suppressed": 3 },
+  "items": [
+    {
+      "event_id": "evt_01J9K2M4",
+      "seq": 184213,
+      "symbol": "TATAMOTORS",
+      "name": "Tata Motors",
+      "attention": 94,
+      "confirmations": 3,
+      "headline": "Contradicts your thesis — margins fell while you were watching for recovery",
+      "summary": "Q1 FY27 results showed JLR EBIT margin at 6.1%, down 180bps QoQ, against consensus of 8.0%. Management attributed the miss to warranty provisions and an adverse China mix. The stock fell 6.2% on 3.4x average volume.",
+      "summary_state": "READY",
+      "signals": [
+        { "kind": "THESIS_CONTRADICTION", "z": 0.0, "direction": "down",
+          "detail": "You added this on 12 Jun watching for margin recovery. Reported margins moved the other way.",
+          "evidence": [
+            { "label": "JLR EBIT margin Q1 FY27", "value": "6.1% (-180bps QoQ)", "as_of": "2026-09-02T11:00:00Z", "source": "company filing", "url": null },
+            { "label": "Consensus estimate", "value": "8.0%", "as_of": "2026-08-29T00:00:00Z", "source": "street aggregate", "url": null }
+          ] },
+        { "kind": "IDIOSYNCRATIC_MOVE", "z": -3.8, "direction": "down",
+          "detail": "Down 6.2% raw; 5.4% of that is idiosyncratic after stripping Nifty Auto beta of 1.21.",
+          "evidence": [ { "label": "Beta-adjusted residual", "value": "-5.4% (3.8σ)", "as_of": "2026-09-04T12:40:00Z", "source": "computed", "url": null } ] },
+        { "kind": "VOLUME_SURPRISE", "z": 3.1, "direction": "up",
+          "detail": "3.4x 20-day average volume — the move has participation behind it.",
+          "evidence": [ { "label": "Volume vs 20d avg", "value": "3.4x", "as_of": "2026-09-04T12:40:00Z", "source": "computed", "url": null } ] }
+      ],
+      "thesis_impact": {
+        "thesis": "watching for margin recovery",
+        "verdict": "CONTRADICTS",
+        "confidence": 0.91,
+        "rationale": "Reported JLR EBIT margin declined 180bps QoQ and missed consensus by 190bps. This is direct evidence against the recovery you were waiting for."
+      },
+      "price": { "last": 712.40, "change_abs": -47.10, "change_pct": -6.20, "idiosyncratic_pct": -5.40, "since_last_seen_pct": -8.10, "vol_z": 3.1, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true },
+      "first_seen": "2026-09-02T11:04:00Z",
+      "is_unread": true
+    },
+    {
+      "event_id": "evt_01J9K2N1",
+      "seq": 184208,
+      "symbol": "SUNPHARMA",
+      "name": "Sun Pharmaceutical",
+      "attention": 71,
+      "confirmations": 2,
+      "headline": "Down 8.4% over 19 sessions without a single daily move large enough to alert",
+      "summary": null,
+      "summary_state": "PENDING",
+      "signals": [
+        { "kind": "DRIFT", "z": -2.9, "direction": "down",
+          "detail": "Median daily move -0.43% across 19 sessions. No single day exceeded 1.2%. Cumulative -8.4%.",
+          "evidence": [
+            { "label": "Cumulative 19d return", "value": "-8.4%", "as_of": "2026-09-04T12:40:00Z", "source": "computed", "url": null },
+            { "label": "Largest single-day move", "value": "-1.19%", "as_of": "2026-08-21T10:00:00Z", "source": "computed", "url": null }
+          ] },
+        { "kind": "CORRELATION_BREAK", "z": 2.4, "direction": "down",
+          "detail": "Normally 0.78 correlated with Nifty Pharma; realised 0.11 over the same window.",
+          "evidence": [ { "label": "Rolling 20d correlation", "value": "0.11 vs 0.78 baseline", "as_of": "2026-09-04T12:40:00Z", "source": "computed", "url": null } ] }
+      ],
+      "thesis_impact": null,
+      "price": { "last": 1584.20, "change_abs": -3.10, "change_pct": -0.20, "idiosyncratic_pct": -0.11, "since_last_seen_pct": -3.40, "vol_z": 0.2, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true },
+      "first_seen": "2026-09-04T12:40:00Z",
+      "is_unread": true
+    },
+    {
+      "event_id": "evt_01J9K2P7",
+      "seq": 184201,
+      "symbol": "HDFCBANK",
+      "name": "HDFC Bank",
+      "attention": 58,
+      "confirmations": 2,
+      "headline": "Volatility regime shifted — daily swings roughly doubled since 26 Aug",
+      "summary": "Realised 10-day volatility moved from 11.2% to 21.7% annualised. The changepoint model places the break at 26 August with 0.87 posterior probability, coinciding with the RBI policy statement.",
+      "summary_state": "READY",
+      "signals": [
+        { "kind": "REGIME_CHANGE", "z": 2.6, "direction": "neutral",
+          "detail": "BOCPD posterior 0.87 for a changepoint on 26 Aug. Realised vol 11.2% → 21.7% annualised.",
+          "evidence": [ { "label": "Changepoint posterior", "value": "0.87 @ 2026-08-26", "as_of": "2026-09-04T12:40:00Z", "source": "computed", "url": null } ] },
+        { "kind": "CROWD_FLOW", "z": 2.2, "direction": "up",
+          "detail": "Net watchlist adds 4.1x the trailing weekly median across users. Aggregate only, min cohort 500.",
+          "evidence": [ { "label": "Net adds vs median", "value": "4.1x", "as_of": "2026-09-04T06:00:00Z", "source": "first-party aggregate", "url": null } ] }
+      ],
+      "thesis_impact": null,
+      "price": { "last": 1943.80, "change_abs": 12.40, "change_pct": 0.64, "idiosyncratic_pct": 1.02, "since_last_seen_pct": 1.90, "vol_z": 1.4, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true },
+      "first_seen": "2026-09-04T04:15:00Z",
+      "is_unread": true
+    },
+    {
+      "event_id": "evt_01J9K2Q3",
+      "seq": 184190,
+      "symbol": "INFY",
+      "name": "Infosys",
+      "attention": 44,
+      "confirmations": 2,
+      "headline": "Reported results and did not move — the market had already priced it",
+      "summary": "Q1 came in 0.4% ahead on revenue and reiterated FY27 guidance. Implied move into the print was 4.2%; realised was 0.3%. Nothing in the result changed the market's view.",
+      "summary_state": "READY",
+      "signals": [
+        { "kind": "ABSENCE", "z": -2.1, "direction": "neutral",
+          "detail": "Earnings day realised move 0.3% against a 4.2% implied. Expected volatility did not materialise.",
+          "evidence": [ { "label": "Implied vs realised", "value": "4.2% implied / 0.3% realised", "as_of": "2026-09-03T10:00:00Z", "source": "computed", "url": null } ] },
+        { "kind": "CORPORATE_EVENT", "z": 1.8, "direction": "neutral",
+          "detail": "Q1 FY27 results; FY27 revenue guidance reiterated at 3-5% cc.",
+          "evidence": [ { "label": "FY27 guidance", "value": "3-5% cc, unchanged", "as_of": "2026-09-03T10:00:00Z", "source": "company filing", "url": null } ] }
+      ],
+      "thesis_impact": null,
+      "price": { "last": 1622.15, "change_abs": 4.90, "change_pct": 0.30, "idiosyncratic_pct": 0.72, "since_last_seen_pct": 0.55, "vol_z": -1.9, "currency": "INR" },
+      "provenance": { "source": "yahoo", "as_of": "2026-09-04T12:30:00Z", "freshness": "DELAYED", "disagreement_pct": null, "corporate_action_adjusted": true },
+      "first_seen": "2026-09-03T10:05:00Z",
+      "is_unread": false
+    }
+  ],
+  "quiet": [
+    { "symbol": "TCS", "name": "Tata Consultancy Services", "reason": "moved 0.6σ, no volume confirmation — one factor short of the two-factor gate", "change_pct": -0.81,
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true } },
+    { "symbol": "DMART", "name": "Avenue Supermarts", "reason": "moved with its sector; idiosyncratic residual 0.2σ", "change_pct": -1.40,
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true } },
+    { "symbol": "ETERNAL", "name": "Eternal", "reason": "sources disagree by 2.3% — signals suppressed until reconciled", "change_pct": 0.0,
+      "provenance": { "source": "nse+yahoo", "as_of": "2026-09-04T12:41:00Z", "freshness": "SUSPECT", "disagreement_pct": 2.3, "corporate_action_adjusted": true } }
+  ],
+  "corrections": [
+    {
+      "event_id": "evt_01J9J8B2",
+      "seq": 184002,
+      "symbol": "WIPRO",
+      "name": "Wipro",
+      "attention": 100,
+      "confirmations": 1,
+      "headline": "Correction — the -4.1% we showed you on 2 Sep was an unadjusted 1:3 bonus issue",
+      "summary": "On 2 September we surfaced Wipro as down 4.1%. That print was a bonus-issue adjustment, not a price move. The corrected idiosyncratic change for that session is +0.3%. If you acted on the earlier number, this is why it looked wrong.",
+      "summary_state": "READY",
+      "signals": [
+        { "kind": "CORRECTION", "z": 0.0, "direction": "neutral",
+          "detail": "Corporate action 1:3 bonus, ex-date 2 Sep. Original print was not adjusted at ingest. Adjusted and restated.",
+          "evidence": [
+            { "label": "Corporate action", "value": "1:3 bonus, ex-date 2026-09-02", "as_of": "2026-09-02T00:00:00Z", "source": "exchange notice", "url": null },
+            { "label": "Restated session change", "value": "+0.3% (was -4.1%)", "as_of": "2026-09-03T02:00:00Z", "source": "computed", "url": null }
+          ] }
+      ],
+      "thesis_impact": null,
+      "price": { "last": 268.90, "change_abs": 0.80, "change_pct": 0.30, "idiosyncratic_pct": 0.31, "since_last_seen_pct": 0.30, "vol_z": 0.1, "currency": "INR" },
+      "provenance": { "source": "nse", "as_of": "2026-09-04T12:44:55Z", "freshness": "LIVE", "disagreement_pct": null, "corporate_action_adjusted": true },
+      "first_seen": "2026-09-03T02:00:00Z",
+      "is_unread": true
+    }
+  ]
+}
