@@ -24,9 +24,14 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     openrouter_api_key: str | None = None
 
-    gemini_model: str = "gemini-2.5-flash"
-    # OpenRouter: only ":free" ids are ever requested.
-    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+    # "gemini-2.5-flash" is listed by ListModels but 404s for new API keys as
+    # of this deployment ("no longer available to new users") -- the *-latest
+    # alias is what Google actually routes new keys to.
+    gemini_model: str = "gemini-flash-latest"
+    # OpenRouter: only ":free" ids are ever requested. The Llama 3.3 free
+    # slug this defaulted to has since been withdrawn from the free tier;
+    # verified live against openrouter.ai/api/v1/models at deploy time.
+    openrouter_model: str = "google/gemma-4-31b-it:free"
 
     # Cold-start quota guesses. The router replaces these with whatever the
     # provider's live 429 / quota metadata says — see llm/router.py.
