@@ -61,11 +61,18 @@ def _headline(name: str, price: PricePoint, signals: list[Signal]) -> str:
     return f"{name} {direction} {abs(price.change_pct):.1f}% — {label}"
 
 
-def _idio_and_volz(ctx: SignalContext) -> tuple[float | None, float]:
+def _idio_and_volz(ctx: SignalContext) -> tuple[float | None, float | None, float]:
+    """Returns (idio_pct, idio_z, vol_z). idio_z is computed unconditionally --
+    unlike signals.idiosyncratic's `detect()`, which only returns a Signal
+    when |z| clears THRESHOLD_SIGMA, this always reports the real residual so
+    quiet_reason() can say "moved 1.4sigma, below the 2.0sigma threshold"
+    instead of losing that number and collapsing to a generic fallback."""
     idio_pct: float | None = None
+    idio_z: float | None = None
     if ctx.returns.size >= 20 and ctx.index_returns.size >= 20:
         fit = rolling_ols(ctx.returns, ctx.index_returns, window=OLS_WINDOW)
         idio_pct = round(fit.residual(ctx.last_return, ctx.last_index_return) * 100.0, 2)
+        idio_z = round(fit.residual_z(ctx.last_return, ctx.last_index_return), 2)
 
     vol_z = 0.0
     if ctx.volumes.size >= 6:
@@ -76,7 +83,7 @@ def _idio_and_volz(ctx: SignalContext) -> tuple[float | None, float]:
                        np.log(np.clip(hist, 1.0, None))),
                 2,
             )
-    return idio_pct, vol_z
+    return idio_pct, idio_z, vol_z
 
 
 async def _build_context(
@@ -312,7 +319,7 @@ async def run_cycle(db: AsyncSession, llm: LLMRouter, session_index: int | None 
         signals = run_all(ctx)
         gate = evaluate(signals, freshness=rq.freshness)
 
-        idio_pct, vol_z = _idio_and_volz(ctx)
+        idio_pct, idio_z, vol_z = _idio_and_volz(ctx)
         price = PricePoint(
             last=rq.last, change_abs=round(rq.change_abs, 2), change_pct=round(rq.change_pct, 2),
             idiosyncratic_pct=idio_pct, since_last_seen_pct=None, vol_z=vol_z, currency="INR",
@@ -322,9 +329,7 @@ async def run_cycle(db: AsyncSession, llm: LLMRouter, session_index: int | None 
         if symbol == "WIPRO":
             correction_price, correction_provenance = price, provenance
 
-        reason = quiet_reason(signals, gate, idiosyncratic_z=(
-            next((s.z for s in signals if s.kind == "IDIOSYNCRATIC_MOVE"), None)
-        ))
+        reason = quiet_reason(signals, gate, idiosyncratic_z=idio_z)
 
         await kv().set(f"cycle:{symbol}", {
             "session_index": session_index,
