@@ -70,22 +70,35 @@ read time, over precomputed data.
 
 ```mermaid
 flowchart TB
-    subgraph SYM["Symbol pipeline — runs once per symbol"]
-        A["Feed adapters<br/>Yahoo, NSE, replay simulator"] --> B["Normalize, adjust<br/>for corporate actions"]
-        B --> C["Reconciler<br/>freshness: live, delayed, stale, or suspect"]
-        C --> D["Signal detectors<br/>idiosyncratic, drift, regime,<br/>correlation, volume, events, absence"]
+    subgraph SYM["Symbol pipeline — runs once per symbol, shared by every subscriber"]
+        A("Feed adapters<br/>Yahoo · NSE · replay simulator") --> B("Normalize + adjust<br/>for corporate actions")
+        B --> C("Reconciler<br/>freshness: live · delayed · stale · suspect")
+        C --> D("Signal detectors<br/>idiosyncratic · drift · regime<br/>correlation · volume · events · absence")
         D --> E{"Two confirming<br/>signals?"}
-        E -->|"no"| X["dropped"]
-        E -->|"yes"| F["LLM summary,<br/>one per symbol event"]
-        F --> G[("cache: signal per symbol")]
+        E -.->|no, ~99%| X("dropped")
+        E ==>|yes| F("LLM summary<br/>one per symbol event")
+        F --> G[("cache<br/>signal per symbol")]
     end
 
-    subgraph USR["Per-user read path"]
-        G --> H["score = signal vector<br/>x user profile"]
-        H --> I["attention budget"]
-        I --> J["read cursor diff<br/>(seq greater than last_seen_seq)"]
-        J --> K["ranked digest"]
+    subgraph USR["Per-user read path — cheap arithmetic, computed on open"]
+        G ==> H("score = signal vector<br/>× user profile")
+        H --> I("attention budget")
+        I --> J("read-cursor diff<br/>seq &gt; last_seen_seq")
+        J --> K("ranked digest")
     end
+
+    classDef stage fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#312e81
+    classDef decision fill:#fff7ed,stroke:#f97316,stroke-width:1.5px,color:#7c2d12
+    classDef cache fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,color:#065f46
+    classDef dropped fill:#fef2f2,stroke:#f87171,stroke-width:1px,color:#991b1b,stroke-dasharray:3 3
+    classDef terminal fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#1e3a8a
+
+    class A,B,C,D,H,I,J stage
+    class E decision
+    class F stage
+    class G cache
+    class X dropped
+    class K terminal
 ```
 
 This split has a few consequences:
