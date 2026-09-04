@@ -249,9 +249,7 @@ export function ChangeCard({
 
           {readOnly && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-              <span className="font-mono text-xs text-gray-400">
-                seq {item.seq} · {asOf(item.first_seen)}
-              </span>
+              <span className="font-mono text-xs text-gray-400">{asOf(item.first_seen)}</span>
               <span className="text-xs text-gray-400">
                 {item.price.change_abs >= 0 ? "+" : "−"}₹{money(Math.abs(item.price.change_abs))} · {pct(item.price.change_pct)}
               </span>

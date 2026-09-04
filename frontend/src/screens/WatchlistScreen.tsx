@@ -100,7 +100,7 @@ function WatchRow({ entry }: { entry: WatchEntry }) {
         </div>
         <div className="mt-1.5"><FreshnessChip provenance={entry.provenance} /></div>
         <div className="mt-1.5 text-xs text-gray-400">
-          added {day(entry.added_at)} · cursor at seq {entry.last_seen_seq}
+          added {day(entry.added_at)}
           {entry.position && <> · {entry.position.qty} @ ₹{money(entry.position.avg_cost)}</>}
           {entry.muted_kinds.length > 0 && <> · muted: {entry.muted_kinds.map((k) => SIGNAL_META[k].label).join(", ")}</>}
         </div>
