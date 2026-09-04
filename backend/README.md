@@ -46,8 +46,7 @@ Copy `.env.example` to `.env` only to change a default:
 curl -X POST localhost:8000/api/v1/sim/advance -d '{"hours": 24}' -H 'content-type: application/json'
 ```
 
-Runs another ingest cycle at the new simulated session. See `DEMO.md` in the
-repo root for the full walkthrough.
+Runs another ingest cycle at the new simulated session.
 
 ## Tests
 

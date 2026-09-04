@@ -1,59 +1,54 @@
 # Delta — Smart Market Watchlist
 
-A watchlist that reports what *meaningfully changed* since you last checked — nothing else.
+A watchlist that reports what changed since you last checked, and nothing else. Built for
+CODE 2026.
 
-**CODE 2026 submission.** Full design writeup, research citations, and scaling analysis: [DESIGN.md](DESIGN.md).
+Design writeup, research basis, and scaling analysis: [DESIGN.md](DESIGN.md).
 
-> Delta is not a dashboard. It's a changelog with a read cursor — closer to a git diff or an
-> email inbox than to a stock-price app. Once you've seen something, it's marked read and
-> never shown again.
+Live demo: frontend at `frontend-eight-livid-35.vercel.app`, backend at
+`delta-watchlist-backend.onrender.com/api/v1`.
 
----
-
-## Table of Contents
+## Contents
 
 - [Overview](#overview)
-- [Key Features](#key-features)
+- [Features](#features)
 - [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Project structure](#project-structure)
 - [API](#api)
-- [Design Rationale](#design-rationale)
-- [License](#license)
-
----
+- [Design notes](#design-notes)
 
 ## Overview
 
-Most "smart watchlist" builds converge on the same shape: watchlist CRUD, live prices, a
-"% since your last visit" banner, LLM-generated news cards, sparklines. Delta deliberately
-does not build that. Instead:
+Most watchlist apps converge on the same shape: add a symbol, show a live price, show a
+percentage change since you last opened the app. Delta is built around a different idea —
+the watchlist behaves like a changelog. Once you've read something, it's marked read and
+does not resurface.
 
-- Every signal is scored **relative to the symbol's own recent behavior**, in units of
-  standard deviation — not raw percent change.
-- A change is only surfaced once **two independent, uncorrelated signals** confirm it (the
-  "two-factor gate"), which research shows cuts alert false-positive rates from ~45% to
-  under 20%.
-- Every LLM summary is generated **once per symbol-event and shared across every subscriber**,
-  not regenerated per user per view — the architectural decision that keeps the entire AI
-  layer inside a free tier at 10,000 users.
+Three decisions follow from that:
 
-## Key Features
+- Every signal is scored against the symbol's own recent behavior, in standard deviations,
+  not raw percent change. A 3% move means something different for a stable large-cap than
+  for a small-cap.
+- A change is only surfaced once two independent signals confirm it. A single moving metric
+  is not enough on its own.
+- Each LLM summary is generated once per symbol event and shared across every subscriber to
+  that symbol, rather than regenerated per user per view. This is what keeps the AI layer
+  inside free-tier rate limits at 10,000 users — see [Architecture](#architecture).
 
-| Feature | What it does |
+## Features
+
+| Feature | Description |
 |---|---|
-| **Personal materiality** | Ranks changes by position size, cost-basis proximity, watch tenure, and open frequency — the same 4% move can be front-page for one user and noise for another. |
-| **Thesis + contradiction detection** | Adding a symbol requires a plain-language reason. Delta later surfaces evidence that *contradicts* that stated thesis, not just evidence that confirms it. |
-| **Signals no threshold alert catches** | Idiosyncratic move (beta-stripped), slow drift, volatility regime change, correlation break, and *absence* (expected to move on an event, didn't). |
-| **Explicit attention budget** | A fixed number of slots per session, ranked and competed for. Suppressed items are reported, not hidden. |
-| **Watchlist flow as first-party data** | Aggregate, k-anonymized net-add/remove flow across users — the retail-attention analogue of institutional card-transaction data. |
-| **Zero-config, zero-key operation** | Runs end-to-end with no Postgres, no Redis, and no LLM API keys. Every dependency degrades to a deterministic fallback. |
+| Personal materiality | Ranking factors in position size, cost-basis proximity, watch tenure, and open frequency, so the same move can rank differently for two different users. |
+| Thesis and contradiction detection | Adding a symbol requires a plain-language reason for watching it. Delta later checks new evidence against that stated reason, and flags when the evidence points the other way. |
+| Signals beyond threshold alerts | Idiosyncratic move (beta-stripped), slow drift, volatility regime change, correlation break, and absence (an event was expected to move the price and didn't). |
+| Attention budget | A fixed number of ranked slots per session. Anything cut from the ranking is reported as suppressed, not hidden. |
+| Watchlist flow signal | Aggregate, k-anonymized net add/remove activity across users, gated behind a minimum cohort size. |
+| Zero-config operation | Runs with no Postgres, no Redis, and no LLM API key. Every external dependency has a deterministic fallback. |
 
-### What counts as "meaningful"
-
-Scored in units of the symbol's own recent behavior, never raw percent — a 3% move in a
-stable large-cap is a 4-sigma event; in a small-cap, it's routine.
+### Definition of "meaningful"
 
 ```
 surprise = z(idiosyncratic return | trailing 60d realised vol)
@@ -61,94 +56,91 @@ surprise = z(idiosyncratic return | trailing 60d realised vol)
          + P(changepoint | BOCPD)
          + discrete event prior
 
-promote  iff >= 2 independent confirming factors     # the two-factor rule
+promote  iff >= 2 independent confirming factors
 
 attention = surprise x relevance(user, symbol) x thesis_impact x (1 - recency_penalty)
 ```
 
 ## Architecture
 
-The load-bearing constraint: 10,000 users × 50 symbols = 500,000 user-symbol pairs, but the
-liquid universe is only ~2,000 symbols. The pipeline splits at the symbol/user boundary so
-that everything expensive runs once per **symbol**, and everything personal is cheap
-arithmetic computed at **read** time.
+At 10,000 users watching ~50 symbols each, that's 500,000 user-symbol pairs, but the liquid
+universe is only around 2,000 symbols. The pipeline is split at that boundary: work that
+depends only on the symbol runs once and is shared; work that depends on the user runs at
+read time, over precomputed data.
 
 ```mermaid
 flowchart TB
-    subgraph SYM["Symbol tier — O(universe), shared, computed ONCE"]
-        A["Feed adapters<br/>Yahoo · NSE · replay simulator"] --> B["Normalise +<br/>corporate-action adjust"]
-        B --> C["Reconciler<br/>LIVE / DELAYED / STALE / SUSPECT"]
-        C --> D["Signal engine<br/>idiosyncratic · drift · regime<br/>correlation · volume · events · absence"]
-        D --> E{"GLOBAL GATE<br/>interesting to anyone?"}
-        E -->|"~99% die here"| X["dropped"]
-        E -->|"~3-8% survive"| F["1 LLM summary<br/>per symbol-event"]
-        F --> G[("sig:{symbol}<br/>Redis / Valkey")]
+    subgraph SYM["Symbol pipeline — runs once per symbol"]
+        A["Feed adapters<br/>Yahoo, NSE, replay simulator"] --> B["Normalize, adjust<br/>for corporate actions"]
+        B --> C["Reconciler<br/>freshness: live, delayed, stale, or suspect"]
+        C --> D["Signal detectors<br/>idiosyncratic, drift, regime,<br/>correlation, volume, events, absence"]
+        D --> E{"Two confirming<br/>signals?"}
+        E -->|"no"| X["dropped"]
+        E -->|"yes"| F["LLM summary,<br/>one per symbol event"]
+        F --> G[("cache: signal per symbol")]
     end
 
-    subgraph USR["User tier — O(users), personal, computed AT READ"]
-        G --> H["materiality =<br/>signal vector x profile vector"]
-        H --> I["two-factor gate<br/>+ attention budget"]
-        I --> J["read-cursor diff<br/>seq > last_seen_seq"]
-        J --> K["ranked changelog"]
+    subgraph USR["Per-user read path"]
+        G --> H["score = signal vector<br/>x user profile"]
+        H --> I["attention budget"]
+        I --> J["read cursor diff<br/>(seq greater than last_seen_seq)"]
+        J --> K["ranked digest"]
     end
-
-    style E fill:#2d3748,color:#fff
-    style F fill:#2d3748,color:#fff
-    style G fill:#1a365d,color:#fff
 ```
 
-**Consequences of this split:**
+This split has a few consequences:
 
-- Marginal LLM cost per additional user is **zero** — one summary serves every subscriber.
-- Nothing expensive runs in the request path; a request is a join over precomputed vectors.
-  Target p95 < 200ms, at 10k or 10M users, on the same architecture.
-- The ingest tier is O(universe), not O(users) — a 10x increase in users adds zero load to it.
+- The marginal LLM cost of an additional user is zero, since one summary is shared by every
+  subscriber to that symbol.
+- Nothing expensive runs in the request path — a request reads precomputed vectors and joins
+  them. Target p95 is under 200ms, and that target doesn't change between 10,000 and 10
+  million users, because the request-path work doesn't grow with the universe size.
+- Ingest work scales with the number of symbols, not the number of users, so a 10x increase
+  in users adds no load to the ingest or scoring tiers.
 
-At 10,000 users the deployment shards nothing (one Postgres, one Redis, one ingest worker,
-one scoring worker), but the schema already carries the shard key and every query is
-user-scoped, so scaling out is a configuration change, not a migration.
+At the current scale nothing is sharded — one database, one cache, one ingest worker. The
+schema carries a shard key and every read is scoped to a single user, so splitting later is
+a deployment change rather than a schema migration.
 
-### The free tier as a correctness proof
+### Why free-tier LLMs
 
-| Design | LLM calls/day at 10k users | Fits a free tier? |
+| Approach | LLM calls/day at 10,000 users | Fits a free tier |
 |---|---|---|
-| Naive — summarize per user, per view | ~200,000 | No — ~400x over |
-| Delta — per symbol-event, shared | ~800 | Yes, with room |
+| Summarize per user, per view | ~200,000 | No — roughly 400x over |
+| Summarize once per symbol event, shared | ~800 | Yes |
 
-The app runs its entire AI layer on free-tier providers (cascading through Gemini →
-OpenRouter → NVIDIA NIM → a deterministic template floor) and still works correctly with
-**no API keys configured at all** — the template provider composes a factual summary
-directly from signal evidence.
+The app runs its AI layer entirely on free tiers, cascading through Gemini, then
+OpenRouter, then NVIDIA NIM, and finally a deterministic template that composes a summary
+directly from the underlying signal evidence. It runs correctly with no LLM key configured
+at all — the naive per-view design couldn't fit in this budget regardless of provider, which
+is closer to a proof of the architecture than a cost optimization.
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Python · FastAPI · SQLAlchemy (async) · Postgres/SQLite · Redis/in-process fallback |
-| Frontend | React 19 · Vite · TypeScript · Tailwind CSS |
-| LLM providers | Gemini · OpenRouter · NVIDIA NIM (free tiers) · deterministic template floor |
-| Data | Deterministic seeded replay simulator + Yahoo Finance adapter |
+| Backend | Python, FastAPI, SQLAlchemy (async), SQLite/Postgres, Redis with an in-process fallback |
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS |
+| LLM providers | Gemini, OpenRouter, NVIDIA NIM (free tiers), deterministic template fallback |
+| Data | Deterministic seeded replay simulator, Yahoo Finance adapter |
 
-## Getting Started
+## Getting started
 
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
+Requires Python 3.11+ and Node 18+.
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv .venv
-.venv/Scripts/activate        # .venv/bin/activate on macOS/Linux
+source .venv/bin/activate      # .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-No `.env` file is required — the app boots on SQLite with an in-process cache and a
-deterministic template summarizer. See [`backend/README.md`](backend/README.md) for optional
-configuration (Postgres, Redis, LLM provider keys).
+No `.env` file is required. Without one, the app runs on SQLite with an in-process cache
+and the deterministic template summarizer. See [backend/README.md](backend/README.md) for
+optional Postgres, Redis, and LLM provider configuration.
 
 ### Frontend
 
@@ -158,49 +150,44 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. See [`frontend/README.md`](frontend/README.md) for build and
-environment details.
+Open `http://localhost:5173`. See [frontend/README.md](frontend/README.md) for build and
+environment variable details.
 
-## Project Structure
+## Project structure
 
 ```
-DESIGN.md              full system design, research basis, scaling analysis
-contracts/             the authoritative boundary between backend and frontend
+DESIGN.md              system design, research basis, scaling analysis
+contracts/             shared contract between backend and frontend
   API.md               endpoints, read-cursor semantics, degradation rules
-  types.ts              shared types; backend mirrors these as Pydantic models
-  fixtures/             golden JSON — frontend builds against these
-backend/                FastAPI · ingest · signal engine · scoring · LLM router
-frontend/               React 19 · Vite · Tailwind CSS
+  types.ts             shared types, mirrored by backend Pydantic models
+  fixtures/             sample JSON responses used in frontend development
+backend/                FastAPI app: ingest, signal detectors, scoring, LLM router
+frontend/               React app
 ```
 
-Backend and frontend were built in parallel against `contracts/`; the fixtures are the
-meeting point that let both sides be developed simultaneously without drift.
+Backend and frontend were developed against `contracts/` in parallel; the fixtures are what
+made that possible without the two sides drifting apart.
 
 ## API
 
-Full endpoint reference, read-cursor semantics, and degradation rules: [`contracts/API.md`](contracts/API.md).
+Full endpoint reference, read-cursor semantics, and degradation rules:
+[contracts/API.md](contracts/API.md).
 
-| How the brief's decisions are answered | Implementation | Reference |
+| Open question from the brief | How it's answered | Reference |
 |---|---|---|
-| What counts as a meaningful change | Surprise in sigma of the symbol's own volatility, gated on ≥2 confirming factors, then scored per user | `backend/signals/`, `backend/scoring/` · [DESIGN.md §3](DESIGN.md) |
-| What information to surface | A ranked changelog under an attention budget, every claim evidence-linked, plus a *quiet* list for symbols checked and found unchanged | `contracts/API.md` · [DESIGN.md §2](DESIGN.md) |
-| State across sessions/devices | Monotonic `seq` + per-user-per-symbol `last_seen_seq`; cross-device merge via `max()` — idempotent, commutative, no coordination | `backend/state/` · [DESIGN.md §4](DESIGN.md) |
-| Stale, delayed, or conflicting data | Freshness state machine on every value; disagreeing sources mark `SUSPECT` and suppress the derived signal; corporate actions adjusted before detection; corrections are append-only | `backend/ingest/reconciler.py` · [DESIGN.md §8](DESIGN.md) |
-| Scaling | Split at the symbol/user boundary; fan-out-on-read for ranking; thesis clustering keeps contradiction detection O(events × beliefs), not O(users) | [DESIGN.md §5](DESIGN.md), [§7](DESIGN.md) |
-| Where to keep it simple | No streaming ticks by default, no microservice sprawl, no custom ML, no recommendation engine | [DESIGN.md §9](DESIGN.md) |
+| What counts as a meaningful change | Deviation from the symbol's own volatility, gated on two or more confirming signals, then re-ranked per user | `backend/signals/`, `backend/scoring/`, [DESIGN.md §3](DESIGN.md) |
+| What information to surface | A ranked digest under a fixed attention budget, every claim linked to evidence, plus a list of symbols checked and found unchanged | `contracts/API.md`, [DESIGN.md §2](DESIGN.md) |
+| State across sessions and devices | A monotonic sequence number and a per-user, per-symbol read cursor; cross-device sync is a max() merge | `backend/state/`, [DESIGN.md §4](DESIGN.md) |
+| Stale, delayed, or conflicting data | A freshness state on every value; disagreeing sources are marked suspect and their derived signals suppressed; corporate actions are adjusted before signal detection; corrections are appended, not overwritten | `backend/ingest/reconciler.py`, [DESIGN.md §8](DESIGN.md) |
+| Scaling | Split at the symbol/user boundary described above; belief clustering keeps contradiction detection proportional to distinct beliefs rather than user count | [DESIGN.md §5](DESIGN.md), [§7](DESIGN.md) |
+| Where to keep it simple | No streaming price ticks by default, no service sprawl, no custom ML training, no recommendation engine | [DESIGN.md §9](DESIGN.md) |
 
-## Design Rationale
+## Design notes
 
-Compliance and product-design constraints, by design:
+- No advisory language anywhere in the product. No buy/sell signals, no price targets, no
+  recommendations — every claim traces back to a dated, sourced piece of evidence.
+- No push-on-tick, no flashing price ticker. SEBI's 2026 shift toward stricter enforcement
+  on digital investment advice made "report what changed, with full provenance" both the
+  safer and the more useful design.
 
-- **No advisory language anywhere.** No buy/sell signals, no price targets, no
-  recommendations — every claim traces to a dated, sourced piece of evidence.
-- **No push-on-tick, no flashing UI.** SEBI's 2026 shift from advisory to enforcement on
-  digital investment advice made "report what changed, with full provenance" both the
-  compliant answer and the more useful product.
-
-For the full reasoning, research citations, and scaling analysis, see [DESIGN.md](DESIGN.md).
-
-## License
-
-Not currently licensed for reuse. Built for CODE 2026.
+Full reasoning and citations: [DESIGN.md](DESIGN.md).
