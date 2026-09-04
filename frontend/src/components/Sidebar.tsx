@@ -76,12 +76,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
-      <div className="mt-auto flex flex-col gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-        <span className="w-fit rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
-          {store.mode === "fixtures" ? "Fixture data" : "Live API"}
-        </span>
-      </div>
     </aside>
   );
 }

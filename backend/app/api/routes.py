@@ -32,9 +32,11 @@ from ..schemas import (
     AttentionBudget,
     ChangeItem,
     DigestResponse,
+    DiscoverCard,
     DismissRequest,
     DismissResponse,
     HealthResponse,
+    MatchRatio,
     MarketDataHealth,
     MarketSnapshot,
     PatchWatchRequest,
@@ -523,10 +525,47 @@ async def search(q: str = Query(default="")):
     out = []
     for sp in UNIVERSE:
         if needle in sp.symbol or needle.lower() in sp.name.lower():
-            out.append(SymbolRef(symbol=sp.symbol, name=sp.name, exchange="NSE"))
+            out.append(SymbolRef(symbol=sp.symbol, name=sp.name, exchange="NSE", sector=sp.sector))
         if len(out) >= 10:
             break
     return out
+
+
+@router.get("/discover", response_model=list[DiscoverCard])
+async def discover(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+):
+    """Unwatched symbols, ranked by a deliberately simple match ratio: how many
+    of the symbols you already watch share this candidate's sector, out of
+    how many you watch in total. No ML, no embeddings -- a ratio, shown as one,
+    so the reasoning behind the ranking is legible on the card itself."""
+    rows = await session.execute(select(WatchItem.symbol).where(WatchItem.user_id == user.id))
+    watched = {r[0] for r in rows.all()}
+
+    sector_counts: dict[str, int] = {}
+    for symbol in watched:
+        sp = BY_SYMBOL.get(symbol)
+        if sp:
+            sector_counts[sp.sector] = sector_counts.get(sp.sector, 0) + 1
+    total_watched = len(watched) or 1
+
+    candidates = [sp for sp in UNIVERSE if sp.symbol not in watched]
+
+    cards: list[DiscoverCard] = []
+    for sp in candidates:
+        shared = sector_counts.get(sp.sector, 0)
+        price, prov = await _watch_price_provenance(sp.symbol)
+        cards.append(
+            DiscoverCard(
+                symbol=sp.symbol, name=sp.name, sector=sp.sector,
+                price=price, provenance=prov,
+                match=MatchRatio(shared=shared, total=total_watched,
+                                 ratio=round(shared / total_watched, 2)),
+            )
+        )
+
+    cards.sort(key=lambda c: c.match.ratio, reverse=True)
+    return cards[:15]
 
 
 # ---------------------------------------------------------------------------

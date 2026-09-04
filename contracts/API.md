@@ -24,6 +24,7 @@ is how "same account, different device" is demonstrated.
 | POST | `/digest/dismiss` | `{event_id, signal_kind}` teach a personal threshold |
 | GET | `/symbols/{symbol}` | `SymbolDetail` — full timeline + evidence |
 | GET | `/search?q=` | `SymbolRef[]` |
+| GET | `/discover` | `DiscoverCard[]` -- unwatched symbols ranked by shared-sector match ratio |
 | GET | `/stream` | SSE, opt-in live prices only |
 | POST | `/sim/advance` | demo control `{hours}` — fast-forward the replay clock |
 | GET | `/health` | liveness + per-provider LLM quota state |

@@ -22,6 +22,7 @@ import { ApiError } from "./client";
 import type {
   ChangeItem,
   DigestResponse,
+  DiscoverCard,
   HealthResponse,
   QuietItem,
   SymbolDetail,
@@ -294,34 +295,34 @@ function sparkline(symbol: string, last: number, totalPct: number, points = 60) 
 }
 
 const CATALOGUE: SymbolRef[] = [
-  { symbol: "TATAMOTORS", name: "Tata Motors", exchange: "NSE" },
-  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", exchange: "NSE" },
-  { symbol: "HDFCBANK", name: "HDFC Bank", exchange: "NSE" },
-  { symbol: "INFY", name: "Infosys", exchange: "NSE" },
-  { symbol: "TCS", name: "Tata Consultancy Services", exchange: "NSE" },
-  { symbol: "DMART", name: "Avenue Supermarts", exchange: "NSE" },
-  { symbol: "ETERNAL", name: "Eternal", exchange: "NSE" },
-  { symbol: "WIPRO", name: "Wipro", exchange: "NSE" },
-  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "NSE" },
-  { symbol: "ICICIBANK", name: "ICICI Bank", exchange: "NSE" },
-  { symbol: "AXISBANK", name: "Axis Bank", exchange: "NSE" },
-  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", exchange: "NSE" },
-  { symbol: "LT", name: "Larsen & Toubro", exchange: "NSE" },
-  { symbol: "MARUTI", name: "Maruti Suzuki India", exchange: "NSE" },
-  { symbol: "BAJFINANCE", name: "Bajaj Finance", exchange: "NSE" },
-  { symbol: "TITAN", name: "Titan Company", exchange: "NSE" },
-  { symbol: "ASIANPAINT", name: "Asian Paints", exchange: "NSE" },
-  { symbol: "HINDUNILVR", name: "Hindustan Unilever", exchange: "NSE" },
-  { symbol: "ITC", name: "ITC", exchange: "NSE" },
-  { symbol: "ADANIPORTS", name: "Adani Ports & SEZ", exchange: "NSE" },
-  { symbol: "POWERGRID", name: "Power Grid Corporation", exchange: "NSE" },
-  { symbol: "ZOMATO", name: "Zomato", exchange: "NSE" },
-  { symbol: "PAYTM", name: "One97 Communications", exchange: "NSE" },
-  { symbol: "IRCTC", name: "Indian Railway Catering & Tourism", exchange: "NSE" },
-  { symbol: "TATASTEEL", name: "Tata Steel", exchange: "NSE" },
-  { symbol: "JSWSTEEL", name: "JSW Steel", exchange: "NSE" },
-  { symbol: "NESTLEIND", name: "Nestlé India", exchange: "BSE" },
-  { symbol: "BRITANNIA", name: "Britannia Industries", exchange: "NSE" },
+  { symbol: "TATAMOTORS", name: "Tata Motors", exchange: "NSE", sector: "AUTO" },
+  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", exchange: "NSE", sector: "PHARMA" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", exchange: "NSE", sector: "BANK" },
+  { symbol: "INFY", name: "Infosys", exchange: "NSE", sector: "IT" },
+  { symbol: "TCS", name: "Tata Consultancy Services", exchange: "NSE", sector: "IT" },
+  { symbol: "DMART", name: "Avenue Supermarts", exchange: "NSE", sector: "CONSUMER" },
+  { symbol: "ETERNAL", name: "Eternal", exchange: "NSE", sector: "CONSUMER" },
+  { symbol: "WIPRO", name: "Wipro", exchange: "NSE", sector: "IT" },
+  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "NSE", sector: "ENERGY" },
+  { symbol: "ICICIBANK", name: "ICICI Bank", exchange: "NSE", sector: "BANK" },
+  { symbol: "AXISBANK", name: "Axis Bank", exchange: "NSE", sector: "BANK" },
+  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", exchange: "NSE", sector: "BANK" },
+  { symbol: "LT", name: "Larsen & Toubro", exchange: "NSE", sector: "INFRA" },
+  { symbol: "MARUTI", name: "Maruti Suzuki India", exchange: "NSE", sector: "AUTO" },
+  { symbol: "BAJFINANCE", name: "Bajaj Finance", exchange: "NSE", sector: "BANK" },
+  { symbol: "TITAN", name: "Titan Company", exchange: "NSE", sector: "CONSUMER" },
+  { symbol: "ASIANPAINT", name: "Asian Paints", exchange: "NSE", sector: "CONSUMER" },
+  { symbol: "HINDUNILVR", name: "Hindustan Unilever", exchange: "NSE", sector: "FMCG" },
+  { symbol: "ITC", name: "ITC", exchange: "NSE", sector: "FMCG" },
+  { symbol: "ADANIPORTS", name: "Adani Ports & SEZ", exchange: "NSE", sector: "INFRA" },
+  { symbol: "POWERGRID", name: "Power Grid Corporation", exchange: "NSE", sector: "INFRA" },
+  { symbol: "ZOMATO", name: "Zomato", exchange: "NSE", sector: "CONSUMER" },
+  { symbol: "PAYTM", name: "One97 Communications", exchange: "NSE", sector: "IT" },
+  { symbol: "IRCTC", name: "Indian Railway Catering & Tourism", exchange: "NSE", sector: "INFRA" },
+  { symbol: "TATASTEEL", name: "Tata Steel", exchange: "NSE", sector: "METAL" },
+  { symbol: "JSWSTEEL", name: "JSW Steel", exchange: "NSE", sector: "METAL" },
+  { symbol: "NESTLEIND", name: "Nestlé India", exchange: "BSE", sector: "FMCG" },
+  { symbol: "BRITANNIA", name: "Britannia Industries", exchange: "NSE", sector: "FMCG" },
 ];
 
 // ------------------------------------------------------------------- the client
@@ -501,6 +502,51 @@ export function createFixtureClient(): ApiClient {
       return CATALOGUE.filter(
         (c) => c.symbol.includes(needle) || c.name.toUpperCase().includes(needle),
       ).slice(0, 8);
+    },
+
+    async discover() {
+      await latency(0.6);
+      const watchedSymbols = new Set(entries.map((e) => e.symbol));
+      const sectorCounts = new Map<string, number>();
+      for (const e of entries) {
+        const ref = CATALOGUE.find((c) => c.symbol === e.symbol);
+        if (ref) sectorCounts.set(ref.sector, (sectorCounts.get(ref.sector) ?? 0) + 1);
+      }
+      const totalWatched = entries.length || 1;
+
+      const cards: DiscoverCard[] = CATALOGUE.filter((c) => !watchedSymbols.has(c.symbol)).map(
+        (c) => {
+          const rand = rng(hash(c.symbol));
+          const last = Math.round((200 + rand() * 2400) * 100) / 100;
+          const pct = Math.round((rand() * 4 - 2) * 100) / 100;
+          const shared = sectorCounts.get(c.sector) ?? 0;
+          return {
+            symbol: c.symbol,
+            name: c.name,
+            sector: c.sector,
+            price: {
+              last,
+              change_abs: Math.round(last * (pct / 100) * 100) / 100,
+              change_pct: pct,
+              idiosyncratic_pct: Math.round(pct * 0.6 * 100) / 100,
+              since_last_seen_pct: null,
+              vol_z: Math.round((rand() * 2 - 0.5) * 10) / 10,
+              currency: "INR",
+            },
+            provenance: {
+              source: "sim",
+              as_of: nowIso(),
+              freshness: "LIVE",
+              disagreement_pct: null,
+              corporate_action_adjusted: true,
+            },
+            match: { shared, total: totalWatched, ratio: Math.round((shared / totalWatched) * 100) / 100 },
+          };
+        },
+      );
+
+      cards.sort((a, b) => b.match.ratio - a.match.ratio);
+      return cards.slice(0, 15);
     },
 
     async getHealth() {

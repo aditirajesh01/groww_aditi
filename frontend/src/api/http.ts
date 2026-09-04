@@ -6,6 +6,7 @@ import type {
 } from "./client";
 import type {
   DigestResponse,
+  DiscoverCard,
   HealthResponse,
   SignalKind,
   SymbolDetail,
@@ -94,6 +95,7 @@ export function createHttpClient(): ApiClient {
     getSymbol: (symbol: string) =>
       request<SymbolDetail>(`/symbols/${encodeURIComponent(symbol)}`),
     search: (q: string) => request<SymbolRef[]>(`/search?q=${encodeURIComponent(q)}`),
+    discover: () => request<DiscoverCard[]>("/discover"),
     getHealth: () => request<HealthResponse>("/health"),
     advanceSim: (hours: number) =>
       request<void>("/sim/advance", { method: "POST", body: JSON.stringify({ hours }) }),

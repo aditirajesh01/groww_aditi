@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { WatchEntry } from "@/api/types";
+import { Discover } from "@/components/Discover";
 import { FreshnessChip } from "@/components/FreshnessChip";
 import { ThesisComposer } from "@/components/ThesisComposer";
 import { Ticker } from "@/components/Ticker";
@@ -27,6 +28,11 @@ export function WatchlistScreen() {
       <h1 className="text-2xl font-extrabold tracking-tight text-gray-800 dark:text-white">
         What you watch, and why.
       </h1>
+
+      <section>
+        <h2 className="mb-3 text-lg font-bold text-gray-800 dark:text-white">Discover</h2>
+        <Discover key={entries.length} onAdd={(symbol) => store.addWatch({ symbol })} />
+      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-bold text-gray-800 dark:text-white">Add a symbol</h2>

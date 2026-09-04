@@ -1,5 +1,6 @@
 import type {
   DigestResponse,
+  DiscoverCard,
   HealthResponse,
   SignalKind,
   SymbolDetail,
@@ -41,6 +42,7 @@ export interface ApiClient {
   removeWatch(symbol: string): Promise<void>;
   getSymbol(symbol: string): Promise<SymbolDetail>;
   search(q: string): Promise<SymbolRef[]>;
+  discover(): Promise<DiscoverCard[]>;
   getHealth(): Promise<HealthResponse>;
   advanceSim(hours: number): Promise<void>;
 }

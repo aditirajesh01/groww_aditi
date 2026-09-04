@@ -23,4 +23,6 @@ export type {
   SymbolRef,
   SymbolDetail,
   HealthResponse,
+  MatchRatio,
+  DiscoverCard,
 } from "@contracts/types";
