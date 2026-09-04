@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # --- LLM providers (optional) -----------------------------------------
     gemini_api_key: str | None = None
     openrouter_api_key: str | None = None
+    nvidia_api_key: str | None = None
 
     # "gemini-2.5-flash" is listed by ListModels but 404s for new API keys as
     # of this deployment ("no longer available to new users") -- the *-latest
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
     # slug this defaulted to has since been withdrawn from the free tier;
     # verified live against openrouter.ai/api/v1/models at deploy time.
     openrouter_model: str = "google/gemma-4-31b-it:free"
+    # build.nvidia.com NIM catalog. OpenAI-compatible chat completions.
+    nvidia_model: str = "meta/llama-3.1-8b-instruct"
 
     # Cold-start quota guesses. The router replaces these with whatever the
     # provider's live 429 / quota metadata says — see llm/router.py.
@@ -39,6 +42,10 @@ class Settings(BaseSettings):
     gemini_rpd: int = 500
     openrouter_rpm: int = 20
     openrouter_rpd: int = 50
+    # ~40 RPM per NVIDIA's published NIM trial limits; RPD is a proxy for the
+    # signup credit pool (roughly 1,000-5,000), not a real daily reset.
+    nvidia_rpm: int = 40
+    nvidia_rpd: int = 1000
 
     # --- product knobs -----------------------------------------------------
     attention_cap: int = 5

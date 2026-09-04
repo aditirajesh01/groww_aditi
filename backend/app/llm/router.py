@@ -49,6 +49,7 @@ from .base import (
     ThesisRequest,
 )
 from .gemini import GeminiProvider
+from .nvidia import NvidiaProvider
 from .openrouter import OpenRouterProvider
 from .prompts import evidence_blob
 from .template import TemplateProvider
@@ -178,7 +179,7 @@ class LLMRouter:
 
     def __init__(self, providers: list | None = None) -> None:
         if providers is None:
-            providers = [GeminiProvider(), OpenRouterProvider()]
+            providers = [GeminiProvider(), OpenRouterProvider(), NvidiaProvider()]
 
         self.states: list[ProviderState] = []
         for p in providers:
@@ -202,6 +203,8 @@ class LLMRouter:
             return settings.gemini_rpm, settings.gemini_rpd
         if name == "openrouter":
             return settings.openrouter_rpm, settings.openrouter_rpd
+        if name == "nvidia":
+            return settings.nvidia_rpm, settings.nvidia_rpd
         return 10, 100
 
     def _roll(self) -> None:
