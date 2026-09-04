@@ -30,6 +30,13 @@
   --ring: light-dark(#a5741a, #e0a83c);
 
   /* --- accents ---------------------------------------------------------- */
+  /* Brand/interactive accent -- sidebar active state, primary buttons, links.
+     Kept separate from the brass/pos/neg ramp below, which carries semantic
+     meaning (severity, up/down) and must not be repurposed as decoration. */
+  --brand: light-dark(#4f46e5, #6366f1);
+  --brand-dim: light-dark(rgba(79, 70, 229, 0.10), rgba(99, 102, 241, 0.16));
+  --brand-foreground: #ffffff;
+
   --brass: light-dark(#8a6212, #e0a83c);
   --brass-dim: light-dark(rgba(138, 98, 18, 0.12), rgba(224, 168, 60, 0.14));
   --pos: light-dark(#136b43, #4ec98a);
@@ -67,8 +74,9 @@
   --tracking-tight: -0.03em;
   --tracking-snug: -0.015em;
 
-  --radius-medium: 0.5rem;
-  --radius-large: 0.875rem;
+  --radius-medium: 0.625rem;
+  --radius-large: 1rem;
+  --sidebar-w: 15.5rem;
 
   --shadow-small: light-dark(0 1px 2px rgb(20 23 28 / 0.05), none);
   --shadow-medium: light-dark(0 2px 8px -2px rgb(20 23 28 / 0.10), 0 0 0 1px rgb(0 0 0 / 0.25));

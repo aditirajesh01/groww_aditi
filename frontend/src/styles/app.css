@@ -61,6 +61,170 @@ main { padding-block-start: 0; }
   flex-direction: column;
 }
 
+.shell--sidebar {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.shell__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* --------------------------------------------------------------- sidebar */
+
+.sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  min-height: 100dvh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--hair);
+  padding: var(--space-5) var(--space-4);
+}
+
+@media (max-width: 860px) {
+  .shell--sidebar { flex-direction: column; }
+  .sidebar {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+    padding: var(--space-3) var(--gutter);
+    border-right: none;
+    border-bottom: 1px solid var(--hair);
+    overflow-x: auto;
+  }
+  .sidebar__nav { flex-direction: row; margin-top: 0; margin-inline-start: var(--space-4); }
+  .sidebar__section, .sidebar__foot { display: none; }
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.25rem 0.35rem;
+}
+
+.sidebar__mark { flex: 0 0 auto; display: grid; place-items: center; }
+
+.sidebar__brand-text {
+  display: flex;
+  flex-direction: column;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: var(--tracking-snug);
+  line-height: 1.2;
+}
+.sidebar__brand-text small {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: var(--space-6);
+}
+
+.sidebar__section {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  padding: 0 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.sidebar__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-medium);
+  font-size: 0.875rem;
+  font-weight: 550;
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.sidebar__link:hover { color: var(--foreground); background: var(--surface-2); }
+.sidebar__link[data-active] {
+  color: var(--brand);
+  background: var(--brand-dim);
+}
+.sidebar__icon { display: grid; place-items: center; flex: 0 0 auto; opacity: 0.9; }
+.sidebar__link[data-active] .sidebar__icon { opacity: 1; }
+
+.sidebar__badge {
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+
+.sidebar__foot {
+  margin-top: auto;
+  padding: var(--space-4) 0.5rem 0.25rem;
+  border-top: 1px solid var(--hair);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.sidebar__mode {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--brand);
+  background: var(--brand-dim);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-full);
+}
+.sidebar__foot-note { font-size: 0.6875rem; color: var(--ink-3); line-height: 1.4; }
+
+/* ------------------------------------------------------------ slim topbar */
+
+.topbar--slim .topbar__inner {
+  height: 3.25rem;
+  padding-inline: var(--gutter);
+  justify-content: space-between;
+}
+.topbar__crumb {
+  font-weight: 650;
+  font-size: 0.9375rem;
+  letter-spacing: var(--tracking-snug);
+}
+
 .wrap {
   width: 100%;
   max-width: var(--measure);
