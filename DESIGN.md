@@ -1,289 +1,298 @@
-# Smart Market Watchlist — System Design
+# Delta — system design
 
-> The watchlist is not a dashboard. It is a **changelog with a read cursor**.
+Delta is not a dashboard. It's a changelog with a read cursor: symbols are tracked, changes
+are detected against each symbol's own recent behavior, and once a change has been shown to
+a user it's marked read and doesn't come back. This document is the reasoning behind that,
+kept close to what was actually built. See [README.md](README.md) for a summary and
+[contracts/API.md](contracts/API.md) for the endpoint reference.
 
-Status: design agreed, implementation pending.
+## Contents
 
----
-
-## 0. Decisions locked
-
-| Decision | Choice |
-|---|---|
-| Data source | Real API behind an adapter, **plus** a deterministic replay simulator |
-| Stack | Python / FastAPI + Postgres + Redis(Valkey) + React 19 + Vite + Oat CSS + Motion |
-| LLM | Gemini free tier -> OpenRouter free -> deterministic template; Claude documented as the production path |
-| Scope | Watch thesis + contradiction detection + all 4 signal types |
-| Target | 10,000 users, with a stated path to 10M |
-
----
+1. [Research basis](#1-research-basis)
+2. [What the product does differently](#2-what-the-product-does-differently)
+3. [Defining a meaningful change](#3-defining-a-meaningful-change)
+4. [Architecture](#4-architecture)
+5. [Sharding](#5-sharding)
+6. [Latency](#6-latency)
+7. [LLM cost](#7-llm-cost)
+8. [Stale, delayed, and conflicting data](#8-stale-delayed-and-conflicting-data)
+9. [Where the design stays simple](#9-where-the-design-stays-simple)
+10. [Related projects](#10-related-projects)
+11. [Frontend](#11-frontend)
 
 ## 1. Research basis
 
-Every design choice below traces to a 2026 finding, not to taste.
+A few points from 2026 reporting and research shaped the direction of the product.
 
-| Finding | Source | Design consequence |
+| Finding | Source | What it implies for the design |
 |---|---|---|
-| FY26 shift to long-term ownership: delivery ratios up, F&O turnover down, active derivative traders −20% to ~78.6L, 87.7% loss-making (~Rs 91,685 cr) | SEBI Annual Report FY26 | The user is a **returning holder**, not a scalper. Do not design for a tape. |
-| ~78% of active traders use alerts; only ~23% find them actionable. >100 unfiltered alerts/day => ~22% more impulsive trades. Alerts needing **2+ confirming factors** cut false positives ~45% -> <20% | 2025-26 trading-behaviour literature (vendor-cited; directional) | **Two-factor confirmation gate** is the core algorithm. Attention budget is evidence-backed. |
-| Alt-data spend ~$2.8bn (+17% YoY); only ~31% use AI for strategy vs 66% for productivity; card transactions #1 category (~17.9%) | Neudata State of Alt Data 2026 | Alpha is in **proprietary data**, not LLM prose. A broker's analogue of card panels is **watchlist flow**. |
-| GR-1 portfolio-aware AI analyst: opt-in, consent layers, guardrails, execution controls. F&O risk alerts + optional trading locks. Behavioural nudges for long-term discipline | Groww Next 2026 | Build the **attention substrate GR-1 sits on**, not a competing insights panel. Behaviourally protective, never signal-generating. |
-| 2026 = enforcement year for finfluencer / digital advice; traceability required; Project Sudarsan AI surveillance | SEBI 2026 | Every card is **evidence-linked, timestamped, auditable**. A changelog, not an opinion. |
-| BOCPD beats GLR/KS on financial series; ~30% fewer false alarms | Bayesian online changepoint detection literature, 2025 | Principled definition of "meaningful change" instead of `abs(pct) > 5`. |
+| SEBI's FY26 annual report shows a shift toward long-term ownership: delivery ratios up, F&O turnover down, active derivatives traders down about 20% to 78.6 lakh, and 87.7% of individual F&O traders still losing money (roughly ₹91,685 crore in aggregate) | SEBI Annual Report FY26 | The target user is someone checking in periodically, not someone watching a live tape. The product should be designed around that. |
+| Around 78% of active traders use some form of alert, but only about 23% find them consistently useful. Traders receiving over 100 unfiltered alerts a day made more impulsive trades. Alerts requiring two or more confirming signals had noticeably lower false-positive rates than single-signal alerts | 2025–26 trading-behavior research (vendor-reported, directional rather than exact) | This is the basis for requiring two independent confirming signals before anything is surfaced, and for capping how many items are shown at once. |
+| Spend on alternative data reached roughly $2.8B in 2025, up about 17% year over year; only about 31% of firms use AI for strategy versus 66% for internal productivity; card-transaction data is the largest single category | Neudata, State of the Alternative Data Market 2026 | The interesting data a broker has isn't LLM-generated commentary — it's aggregate watchlist activity across its own users, which nobody else has access to. |
+| Groww's GR-1 assistant, announced at Groww Next 2026, is opt-in, portfolio-aware, and built with explicit consent and execution controls; separately, F&O risk alerts include optional trading locks | Groww Next 2026 product announcements | The product should support that kind of assistant rather than compete with it — surfacing what changed and why, not generating trade ideas. |
+| SEBI moved from advisory warnings to active enforcement on unregistered digital investment advice in 2026, including AI-based surveillance of finfluencer activity | SEBI 2026 regulatory coverage | Every card needs to trace back to dated, sourced evidence. Nothing in the product should read as advice. |
+| Bayesian online changepoint detection outperforms simpler methods (GLR, KS tests) on financial time series, with meaningfully fewer false alarms | Changepoint detection literature, 2025 | Gives a principled way to detect a volatility regime change, instead of an arbitrary percentage threshold. |
 
----
+## 2. What the product does differently
 
-## 2. Differentiators
+The straightforward version of this brief is watchlist CRUD, live prices, a percentage
+change since your last visit, LLM-written news cards, and sparklines. That's a reasonable
+build, and probably a common one. Delta does five things instead:
 
-The default build — CRUD + live prices + "% since last visit" + LLM news cards + sparklines — is what the prompt produces unassisted. Assume the panel sees it many times over. We build five things instead.
+**Personal materiality.** The same move can matter to one user and not another. Ranking
+factors in position size, distance from cost basis, how long the symbol has been on the
+list, how often it's opened, and the reason it was added.
 
-### (1) Personal materiality, not universal materiality
-The same 4% move is front-page for one user and noise for another.
-`relevance(user, symbol)` is a function of position size, proximity to cost basis, tenure on the list, open frequency, and stated watch reason.
+**A stated thesis, checked against evidence.** Adding a symbol requires a short,
+plain-language reason for watching it — "watching for margin recovery," "want it under
+₹2,400," "hedge for my HDFC position." Two things follow from that: a change can be checked
+against that specific claim rather than a generic threshold, and the system can flag
+evidence that contradicts the stated reason, not just evidence that confirms it.
+Contradiction is more useful than confirmation and most products don't build it, probably
+because it's an uncomfortable thing to show someone. It's also the safer thing to build —
+the app isn't giving advice, it's checking a claim the user already made against dated
+evidence.
 
-### (2) Watch thesis + contradiction detection
-Adding a stock requires a plain-language reason: *"watching for margin recovery"*, *"want it under Rs 2,400"*, *"hedge for my HDFC position"*.
-- "Meaningful change" becomes checkable against an **explicit hypothesis**, not a generic threshold.
-- The system surfaces **evidence that contradicts your own stated thesis**. Contradiction beats confirmation and nobody ships it because it is uncomfortable to receive.
-- Compliance-clean: we never advise, we check *your* hypothesis against dated evidence.
+**Signals a fixed-percentage alert won't catch.** An idiosyncratic move (the price move with
+index and sector beta stripped out — most of a raw percentage move on any given day is just
+the market, not news about the company). Slow drift (a stock losing half a percent a day for
+three weeks trips no alert and is down 8%). A volatility regime change (detected with online
+changepoint detection rather than a fixed rule). A correlation break between two symbols that
+normally move together. And absence — an event that should have moved the price and didn't.
 
-### (3) Four signals invisible to threshold alerts
-- **Idiosyncratic move** — strip index/sector beta. Most of a raw % move is just Nifty; only the residual is news about *this company*.
-- **Drift** — 0.4%/day for three weeks trips no alert and is −8%. The most under-served signal in every watchlist product.
-- **Regime change** — BOCPD/CUSUM on realised vol. A slow truth invisible to a chart glance.
-- **Correlation break** — "TCS and Infosys normally move together; today they didn't."
-- Plus **absence**: expected-to-move-and-didn't (earnings day, nothing happened) is information.
+**A fixed attention budget.** A limited number of ranked slots per digest. Anything that
+doesn't make the cut is reported as suppressed rather than silently dropped, and dismissing
+an item feeds back into what gets ranked for that user going forward.
 
-### (4) Explicit attention budget
-Max N items per session, ranked, competing for slots. If everything is important, nothing is. Dismissal teaches a per-user per-factor threshold — personalisation without an ML platform.
+**Aggregate watchlist activity as a signal.** Net add/remove activity across users, shown
+only in aggregate and only above a minimum cohort size. This is the retail-attention
+equivalent of the transaction-panel data institutional investors buy, and it's only
+available to a platform that already has the user base.
 
-### (5) Watchlist flow as first-party alt-data
-Aggregate, k-anonymised: *"net adds to this symbol up 6x this week."* The retail-attention analogue of the card-transaction panel institutions pay for, structurally unavailable to anyone but a broker. Minimum-cohort gate, aggregate only, never individual.
+## 3. Defining a meaningful change
 
----
-
-## 3. Defining "meaningful change"
-
-Score in units of the symbol's own recent behaviour, never raw percent.
+Everything is scored in units of the symbol's own recent behavior, not raw percent change.
 
 ```
-surprise = z(idiosyncratic_return | trailing 60d realised vol)
-         (+) volume_participation_z
-         (+) P(changepoint | BOCPD)
-         (+) discrete_event_prior     # earnings, guidance, rating action,
-                                      # block deal, promoter pledge, index inclusion
+surprise = z(idiosyncratic return | trailing 60d realised vol)
+         + volume participation z
+         + P(changepoint | BOCPD)
+         + discrete event prior     # earnings, guidance, rating action,
+                                     # block deal, promoter pledge, index inclusion
 
-promote  iff  >= 2 independent confirming factors        # the two-factor rule
+promote  iff  two or more independent confirming factors
 
-attention = surprise x relevance(user, symbol)
-                     x thesis_impact
-                     x (1 - recency_penalty)
+attention = surprise x relevance(user, symbol) x thesis_impact x (1 - recency_penalty)
 ```
 
-A 3% move in a stable large-cap is a 4-sigma event; in a smallcap it is Tuesday. The z-framing handles that for free.
-
----
+A 3% move in a stable large-cap and a 3% move in a small-cap aren't the same event — the
+first is several standard deviations out, the second is within normal daily noise. Scoring
+in sigma rather than percent handles that without a lookup table of thresholds per stock.
 
 ## 4. Architecture
 
-**Load-bearing insight:** 10,000 users x 50 symbols = 500,000 user-symbol pairs, but the liquid universe is only ~2,000 symbols. Split the pipeline at the symbol/user boundary.
+At 10,000 users with roughly 50 symbols on an average watchlist, that's 500,000 user-symbol
+pairs — but the liquid symbol universe is only around 2,000 names. The pipeline is split at
+that boundary: work that depends only on the symbol is done once and shared; work that
+depends on the individual user is done at read time, over already-computed data. The diagram
+in [README.md](README.md#architecture) shows this split; the reasoning behind it is below.
 
-```
-                     O(universe) - shared, expensive, computed ONCE
-  ┌──────────────────────────────────────────────────────────────────┐
-  │  feed adapters ──> normalise ──> corporate-action adjust          │
-  │       │                              │                            │
-  │  [replay sim]                        v                            │
-  │                          vol / z / BOCPD / beta residual          │
-  │                          event extraction                         │
-  │                                      │                            │
-  │                              GLOBAL GATE  (kills ~99%)            │
-  │                                      │                            │
-  │                          1 LLM summary per symbol-event           │
-  │                                      v                            │
-  │                       sig:{symbol}  in Redis/Valkey               │
-  └──────────────────────────────────────────────────────────────────┘
-                                        │
-                     O(users) - personal, cheap, computed AT READ
-  ┌──────────────────────────────────────────────────────────────────┐
-  │   profile vector x signal vector ──> materiality ──> rank         │
-  │   read cursor diff ──> unread changelog ──> attention budget      │
-  └──────────────────────────────────────────────────────────────────┘
-```
+- Reads and writes are handled differently on purpose: personal ranking is computed on
+  read (reads are what's bursty; the computation itself is arithmetic over two vectors),
+  while only the highest-severity push notifications are fanned out on write, and that tier
+  is small by construction.
+- There's a two-stage gate: a global gate asks whether a change is interesting to anyone at
+  all, and only what survives that reaches the per-user gate. In practice the large majority
+  of symbol updates don't clear the first gate, which is most of the reason the rest of the
+  system stays cheap.
 
-- **Fan-out on read** for personal ranking (reads are bursty; compute is arithmetic).
-- **Fan-out on write** only for the top-severity push tier, which is rare by construction.
-- **Two-stage gate:** global gate ("interesting to anyone?") then per-user gate. ~99% of symbol-ticks die at stage 1. That is the load-shedding story.
+**Rough throughput at 10,000 users:** ingesting ~2,000 symbols every 5 seconds is on the
+order of a few hundred messages per second. Read traffic, assuming something like 30% of
+users check in during a half-hour evening window, is well under 100 requests per second at
+peak. Neither number is a real constraint at this scale — the actual costs are in fan-out and
+LLM usage, covered in sections 5 and 7.
 
-### Throughput reality check
-- Ingest: 2,000 symbols @ 5s = **~400 msg/s**. Trivial.
-- Read peak: 30% of 10k users in a 30-min evening window = ~1.7 rps avg, **~50 rps peak**.
+**State across sessions and devices.** Each user has a per-symbol `last_seen_event_seq`, a
+monotonically increasing counter. Syncing across devices is a `max()` of whatever each device
+last saw — commutative, idempotent, and doesn't need any coordination between devices, online
+or offline.
 
-**10,000 users is not a throughput problem.** It is a fan-out, LLM-cost and connection-count problem. Solve exactly those; keep the rest simple.
-
-### State across sessions and devices
-Per-user-per-symbol `last_seen_event_seq`, monotonically increasing.
-Cross-device merge is `max()` — idempotent, commutative, conflict-free, no coordination. Offline reconciles identically.
-
-### Delivery
-Batched digests (close, morning) over push-on-tick, via a scheduled/delayed-message pattern — the same problem Groww's engineering team documented in *Building a Production-Grade Delayed Message System on Kafka*. Sits on primitives they already run.
-
----
+**Delivery.** Digests are batched (market close, next morning) rather than pushed on every
+tick, using a scheduled/delayed-message pattern. Groww's own engineering blog has a writeup
+of a comparable delayed-message system built on Kafka, which is the same kind of pattern this
+would sit on in production.
 
 ## 5. Sharding
 
-Two partitioning keys, and the tension between them is the whole design.
+Two different partitioning keys matter here, and the interesting part is how they interact.
 
-**Signal tier partitions by `symbol_id`.**
-Kafka `md.ticks` partitioned by symbol guarantees per-symbol ordering — mandatory, because a tick and a corporate action for the same symbol processed out of order produces a fake −80% crash. **This tier is O(universe), not O(users): adding users adds zero load.**
+The symbol-processing tier partitions by symbol. Per-symbol ordering matters — a corporate
+action processed out of order relative to a price tick can register as an ~80% crash that
+never happened — so this has to stay ordered per symbol. It scales with the size of the
+symbol universe, not the number of users, so adding users doesn't add load here.
 
-**User tier partitions by `user_id`.**
-Every query is user-scoped (`WHERE user_id = ?`), so there are **zero cross-shard queries on the read path**. At 10k this is one Postgres; at 10M it is 16 shards of ~600k users. Design for the property now, cash it in later.
+The user tier partitions by user ID. Every query is scoped to a single user, so there's no
+cross-shard read on that path. At 10,000 users this is one database; at 10 million it would
+be on the order of a dozen or more shards, each holding a few hundred thousand users. The
+schema is written with that split in mind now, even though nothing is actually sharded yet.
 
-**The one structure spanning both — and the thing that breaks first:**
-the subscription inverted index `symbol -> set(user_id)`.
-- 10k users: 500k entries, Redis sets, ~50MB. Fine.
-- 10M users: RELIANCE alone could have 3M subscribers; a single 3M-member set makes `SMEMBERS` a latency bomb.
-- Fix: shard by `(symbol, user_shard)` -> `subs:{RELIANCE}:{shard_07}`. Fan-out goes parallel per user-shard, each worker touching only its own Postgres shard. No hot key.
+The one structure that spans both is the subscription index — which users are watching which
+symbol. At 10,000 users that's around 500,000 entries, comfortably small. At 10 million
+users, a single popular symbol could have millions of subscribers, and a lookup against that
+one set becomes a real bottleneck. The fix is to shard that index by symbol and a user-shard
+suffix, so a fan-out over one symbol becomes several parallel fan-outs, each touching only
+its own shard. This works because ordering only matters for signal computation, not for the
+fan-out itself — those are separable.
 
-**Hot-symbol power law.** A handful of symbols carry ~100x the median subscriber count, making their partitions hot. Mitigation: sub-partition the top-K by `symbol:bucket` for fan-out. Legal because **ordering is required for signal computation but not for fan-out** — splitting those two concerns is what makes it safe.
+A handful of symbols will always account for a disproportionate share of subscribers, so
+those specific partitions run hotter than the rest; the same sub-partitioning approach
+handles it.
 
-**Scoring shards trivially** by user_id: pure function evaluation, no shared state, linear in stateless workers.
-
-**At 10k we shard nothing.** One Postgres, one Redis, one ingest worker, one scoring worker. The *schema* carries the shard key and every query is user-scoped. The design admits sharding; the deployment declines it. Being able to point at the exact line that changes is the answer.
-
----
+At the current scale, nothing is actually sharded — one database, one cache, one ingest
+process, one scoring process. The point of this section is that the schema and the access
+patterns already assume the eventual split, so scaling out later is a deployment change,
+not a rewrite.
 
 ## 6. Latency
 
-The read path never touches the compute path.
+The read path is separated from anything that does real computation.
 
-| Path | Budget | Notes |
+| Step | Budget | Notes |
 |---|---|---|
-| tick -> signal in Redis | p99 ~2s | Asynchronous. Nobody is waiting. |
-| **open the app (p95)** | **< 200ms e2e** | The only latency a user feels. |
-| — signal vectors | 1-2ms | One pipelined Redis round trip for 50 symbols |
-| — profile + cursors | 3-5ms | Single indexed user-scoped Postgres query |
-| — materiality scoring | < 1ms | 50 symbols x ~10 float ops |
-| — LLM summaries | **0ms** | Pre-computed, cache read, never in path |
+| Signal update reaches the cache | a couple of seconds | Asynchronous — nothing is waiting on this. |
+| Opening the app (target p95) | under 200ms end to end | The only latency a user actually experiences. |
+| — reading signal vectors | 1–2ms | One batched cache read for a full watchlist |
+| — reading profile and cursor state | a few ms | One indexed, user-scoped database query |
+| — scoring | under 1ms | Arithmetic over a small number of symbols |
+| — LLM summaries | 0ms on the read path | Already generated and cached; never computed live |
 
-**The rule that makes it hold: nothing expensive is ever computed in the request path.** A request is a join of pre-computed vectors. That is why one architecture serves 10k and 10M — reads scale horizontally on stateless boxes.
+The rule that makes this hold is that nothing expensive runs while a user is waiting — a
+request is just a join over data that was already computed. That property is also what lets
+the same architecture serve 10,000 users or a much larger number without changing shape,
+since the read path doesn't get more expensive as the symbol universe or user base grows.
 
-**Tail:** p99 killers are cold cache misses and connection-pool exhaustion. pgbouncer, plus a *degraded-but-correct* mode — on signal-cache miss, render prices marked `STALE` rather than blocking. Never let a slow dependency become a slow page.
+On the tail end, the usual causes of a slow p99 are a cold cache or exhausted database
+connections. The mitigation is a connection pooler plus a degraded-but-correct fallback: if a
+signal isn't in cache, show the price marked stale rather than blocking the request. A slow
+dependency shouldn't become a slow page.
 
-**Deliberately not optimised:** tick-to-screen latency. We are not a trading terminal, and sub-50ms quote delivery is irrelevant to a weekly check-in user. Choosing not to optimise, and saying why, is stronger than pretending to do HFT.
+One thing this deliberately doesn't optimize for is tick-to-screen latency. This isn't a
+trading terminal, and sub-second quote delivery isn't relevant to someone checking a
+watchlist every few days. Not optimizing for it, and being explicit about why, seems like a
+more honest position than building token gestures toward low latency that don't matter for
+the actual user.
 
----
+## 7. LLM cost
 
-## 7. LLM cost (real numbers, Claude pricing)
+### Provider setup
 
-Per symbol-event summary: ~2,000 input tokens (cached system prefix + article + signal context), ~300 output.
-Claude Opus 5 at $5/$25 per MTok => **~$0.0175 per call.**
+The deployed app runs its LLM layer entirely on free tiers, in this order:
 
-**Naive** — summarise per user per view:
-10k users x 1 check-in/day x ~20 changed symbols = **200,000 calls/day**
-=> **~$3,500/day ~= $105,000/month.** The design is dead on arrival.
-
-**Ours** — summarise per symbol-event once, shared by every subscriber.
-Only symbols passing the global gate get summarised: ~100-300/day.
-
-| Layer | Volume/day | Cost/month |
+| Provider | Model | Free-tier limits |
 |---|---|---|
-| Symbol-event summaries (Opus 5, Batch API -50%, cached prefix) | ~300 | **~$70** |
-| Thesis-contradiction checks (clustered, cosine-gated, batched) | ~500 | **~$130** |
-| Embeddings (Voyage, finance-domain) | ~300 events + one-time theses | **~$5** |
-| **Total at 10,000 users** | | **~$200/month** |
+| Google Gemini | `gemini-flash-latest` | roughly 10 requests/min, several hundred to ~1,500/day |
+| OpenRouter | free-tier models | 20 requests/min; 50/day unfunded, 1,000/day after a one-time top-up |
+| NVIDIA NIM | `meta/llama-3.2-11b-vision-instruct` | roughly 40 requests/min against a signup credit pool |
+| Template | none | deterministic summary composed directly from signal evidence, no network call |
 
-> **Marginal LLM cost per additional user: 0.** Nothing in the table above has `users` in its growth term.
+Gemini and OpenRouter both proved unreliable in practice under real traffic — Gemini
+returning intermittent 503s, OpenRouter rate-limiting almost immediately even on a fresh key
+— which is why NVIDIA NIM was added as a third real option before falling back to the
+template. The app runs correctly with none of the three keys configured; the last stop in
+the chain needs no key and no network call.
 
-### Why contradiction detection doesn't blow this up
-Naively, checking each user's thesis against each event is O(users). Instead we **embed every thesis once at write time and cluster theses per symbol**: many users write semantically the same belief ("waiting for margin recovery" / "watching margins"). A symbol typically carries 5-20 distinct belief clusters, so generation is O(events x distinct beliefs) — which **saturates** rather than growing with the user base. Dedupe by *semantic belief*, not by user. This is the single sharpest scaling idea in the design.
+This isn't only a cost decision. Free-tier limits are tight enough (on the order of a
+thousand requests a day) that they're a real test of whether the "summarize once per symbol
+event" design actually works, rather than something that only pencils out on paper.
 
-Gating chain before any generation: symbol passed the global gate -> user has a thesis -> `cosine(event_embedding, thesis_cluster) > tau` -> event is a contradiction candidate. ~20% survive. Hard per-user daily cap on top.
-
-### Cost mechanics that actually matter
-- **Batch API = exactly 50% off**, up to 100k requests/batch, most complete within an hour. Digests are not latency-sensitive, so **every scheduled summarisation goes through Batches.** Only the "user opened a symbol we've never summarised" path is synchronous.
-- **Prompt caching:** cache reads are ~0.1x base input; writes are 1.25x (5-min TTL) or 2x (1-hour). Our system prefix + rubric is byte-stable, so it caches cleanly. **Inside a Batch request use the 1-hour TTL** — batch requests spread over up to an hour and would miss a 5-minute entry.
-- **Cache-stampede rule:** a cache entry is only readable once the first response *begins streaming*. N parallel requests with an identical prefix all pay full price. So on the nightly fan-out: send one request, await first token, then fire the rest.
-- **Never put anything volatile before the last `cache_control` breakpoint** — a timestamp or per-request id in the system prompt silently invalidates everything. Verify with `usage.cache_read_input_tokens`; if it is 0 across repeated calls, something is invalidating.
-
-### Provider decision: free tiers for the prototype
-
-The prototype runs entirely on free tiers, behind a `Provider` protocol so the production
-choice stays open.
-
-| Provider | Model | Free limits |
+| Approach | LLM calls/day at 10,000 users | Fits inside a free tier |
 |---|---|---|
-| Google Gemini (primary) | `gemini-2.5-flash` | ~10 RPM, ~500-1,500 RPD; permanent tier, no card |
-| OpenRouter (overflow) | ids ending `:free` | 20 RPM; 50 RPD at zero balance, 1,000 RPD after a one-time $10 |
-| Template (floor) | none | Deterministic summary composed from signal evidence |
+| Summarize per user, per view | roughly 200,000 | No — off by a couple orders of magnitude |
+| Summarize once per symbol event, shared | roughly 800 | Yes, with headroom |
 
-**The rate limit is not a constraint we worked around — it is the proof the architecture is right.**
+### Why contradiction checking doesn't scale with users
 
-| Design | Calls/day | Fits a free tier? |
+Checking every user's thesis against every event, done naively, is O(users × events). The
+fix is to embed each thesis once when it's written and cluster theses per symbol — many
+users describe the same belief in different words ("waiting for margin recovery" and
+"watching margins" are the same claim). A symbol typically has somewhere between 5 and 20
+distinct belief clusters regardless of how many people are watching it, so generation cost
+tracks the number of distinct beliefs, not the number of users. This is the one place in the
+design where the naive approach clearly doesn't scale and the fix is worth calling out
+directly.
+
+Before anything is generated: the symbol has to have already passed the global gate, the
+user has to have a thesis at all, and the thesis's embedding has to be close enough to the
+event's embedding to be worth checking. Only a fraction of candidates make it through that
+chain, and there's a hard per-user daily cap on top of it.
+
+### If this were running on a paid model
+
+The documented production path is Claude (`claude-opus-5`), using the Batch API (roughly
+half the synchronous price) and prompt caching, since digests aren't latency-sensitive and
+the system prompt is stable across calls. At current token counts, that works out to
+somewhere around $200/month at 10,000 users — split roughly evenly between symbol-event
+summaries and thesis-contradiction checks, with embeddings a small fraction of the total.
+Switching providers is a matter of implementing one more provider behind the existing
+interface; nothing else in the design changes.
+
+A cache entry is only usable once the response that wrote it has started streaming, so
+firing many parallel requests against the same prefix pays full price on all of them — the
+practical fix is to send one request, wait for the first token, then fire the rest. And
+nothing volatile (a timestamp, a request ID) can sit before the cache boundary in the system
+prompt, or every request misses.
+
+## 8. Stale, delayed, and conflicting data
+
+Every value carries a source, an as-of timestamp, and a freshness state — live, delayed,
+stale, or suspect — and that state is shown, not hidden. When two sources disagree by more
+than a set tolerance, the value is marked suspect and any signal derived from it is
+suppressed rather than shown with false confidence.
+
+Corporate-action adjustment happens before change detection, not after. An unadjusted 1:5
+split shows up as an 80% price drop, and without this step the system would flag a fake
+crash on every stock split. Corrections to previously shown numbers are appended rather than
+silently overwritten, since a user may have already acted on the earlier figure.
+
+## 9. Where the design stays simple
+
+No streaming price ticks by default — an opt-in live view is available, but it's not the
+default, partly to avoid holding open a large number of idle connections and partly because
+it doesn't match how the target user actually checks the app. No service sprawl: one ingest
+process, one scoring process, one API, and a database plus a cache. No custom-trained models.
+And no recommendation engine, deliberately — the product reports what changed and why; it
+doesn't suggest what to do about it.
+
+## 10. Related projects
+
+A few existing open-source projects were worth looking at before building this.
+
+| Project | What it does | Relevance |
 |---|---|---|
-| Naive: summarise per user per view | ~200,000 | No — ~400x over |
-| Ours: per symbol-event, shared | ~800 | Yes, with room |
+| `Open-Dev-Society/OpenStock` | Watchlist with charts and a daily news email personalized by watchlist | Closest in spirit of the ones reviewed, though it's still "send relevant news," not "detect a meaningful change." |
+| `adrianhajdin/signalist_stock-tracker-app` | A widely used tutorial-style tracker | Likely to be the starting point for a fair number of other builds on this brief. |
+| `Benboerba620/daily-watchlist` | AI-assisted watchlist with a multi-source quote fallback chain | Worth referencing for how it handles provider fallback. |
+| `shubh123a3/Stock-Market-Anomaly-Detection` | Anomaly detection using z-score, Isolation Forest, DBSCAN, LSTM, and autoencoders | Useful reference, though it's a batch approach and this needed something closer to online detection. |
+| `Barisaksel/finomaly` | A modular rule- and ML-based anomaly detection library | Reasonable structural reference for a pluggable detector interface. |
 
-A hard ceiling of ~1,500 requests/day is the most honest possible test of the symbol/user
-split. The naive design cannot be demonstrated at all at 10,000 users; ours runs the entire
-AI layer for free. The 10 RPM ceiling is also what forces the token bucket, quota tracker,
-circuit breaker and content-hash cache to be real rather than decorative.
-
-**The app must work with no API keys at all.** `template.py` composes a factual summary
-from `signals[].evidence[]`, so a reviewer who clones the repo and sets nothing still sees a
-complete product. This is the same degraded-but-correct principle as SUSPECT freshness in
-Sec. 8: when a dependency is unavailable, return the honest partial answer, never a blank
-card and never a confident guess.
-
-Claude (`claude-opus-5`, Batch API, prompt caching) remains the documented production path —
-the cost table above is what it looks like at ~$200/month for 10,000 users. Swapping is one
-implementation of the `Provider` protocol.
-
-### Model choice (production path)
-Were this production, default **`claude-opus-5`** everywhere, `thinking: {type: "adaptive"}`, `output_config.effort` tuned per route (`low` for bulk summarisation, `high` for contradiction reasoning). If we ever want the bulk summariser cheaper, `claude-haiku-4-5` at $1/$5 takes that ~$70 line to ~$16 — but that is a quality tradeoff and a deliberate decision, not a default.
-
-**Embeddings:** Anthropic does not ship an embeddings model; Voyage AI is the recommended provider and has **finance-domain models**, which is exactly the retrieval quality the thesis gate needs.
-
-## 8. Stale, delayed and conflicting data
-
-- Every number carries **provenance + as-of timestamp + freshness state**: `LIVE / DELAYED / STALE / SUSPECT`. Rendered, not hidden.
-- **Sources disagreeing beyond tolerance => mark SUSPECT and suppress the derived signal** rather than emit a confident wrong one. Suppression is the mature answer.
-- **Corporate-action adjustment is mandatory before change detection.** A 1:5 split reads as −80%; unadjusted, we page 10,000 users about a fake collapse. This is where naive change detection dies.
-- **Corrections are append-only.** A revised print produces a visible correction entry, because the user may have acted on the wrong number. Auditability by construction — and the right posture for SEBI 2026.
-
----
-
-## 9. Deliberately simple
-
-No streaming ticks by default (SSE opt-in) — avoids 10k idle WebSockets and matches the FY26 user.
-No microservice sprawl: one ingest worker, one scoring worker, one API, Postgres + Redis.
-No custom ML training. **No recommendation engine, ever, deliberately.**
-
----
-
-## 10. Prior art surveyed
-
-| Repo | What it is | Verdict |
-|---|---|---|
-| `Open-Dev-Society/OpenStock` | Watchlist + TradingView charts + daily news email personalised by watchlist | Closest in spirit. Read its news-association code. Still "send me news", not "detect meaningful change". |
-| `adrianhajdin/signalist_stock-tracker-app` | Popular tutorial-grade tracker | Likely the starting point for many other candidates. Useful as a map of what to avoid. |
-| `Benboerba620/daily-watchlist` | AI watchlist, multi-source quote fallback (Stooq/Finnhub/EOD/yfinance) | **Steal the provider-fallback chain** for the freshness/conflict layer. |
-| `shubh123a3/Stock-Market-Anomaly-Detection` | z-score, Isolation Forest, DBSCAN, LSTM, autoencoder | Reference for the anomaly layer; we need online/streaming, not batch. |
-| `Barisaksel/finomaly` | Modular rule + ML anomaly library | Good structural reference for a pluggable detector interface. |
-
-**None implement** watch-thesis or contradiction detection, per-user materiality, read-cursor changelog semantics, or drift / correlation-break signals. The differentiators hold.
-
----
+None of these implement a stated thesis with contradiction checking, per-user materiality
+scoring, read-cursor-based changelog semantics, or drift/correlation-break detection.
 
 ## 11. Frontend
 
-**Oat** (`knadh/oat`) — 6KB CSS + 2.2KB JS, zero dependency, semantic-HTML-first, theming via CSS variables, automatic dark mode. Genuinely excellent, and we use it **for the design layer**.
+The original plan was to build the UI on [Oat](https://github.com/knadh/oat) — a small,
+semantic-HTML-first CSS and component library (about 6KB of CSS, a couple KB of JS) with no
+dependencies, written by Kailash Nadh, Zerodha's CTO. It's a genuinely well-made library, and
+using it would have kept the frontend close to the minimal end of the spectrum.
 
-But Oat is a CSS/component library, not a reactive framework. This app has real client state — read cursors, optimistic dismissal, ranked lists that reorder, filters, an attention budget that recomputes. Oat has no state model, so it does not replace the reactive layer.
+During implementation this was replaced with Tailwind CSS, styled closer to a dense
+dashboard layout (TailAdmin-style), which turned out to be a better fit once the actual
+volume of information on screen — signal breakdowns, evidence lists, provider status,
+sparklines — became clear. Oat is a component library more suited to simpler, more static
+pages; a screen with this much per-item detail and this much conditional state benefited
+more from Tailwind's utility classes and the broader ecosystem of examples to build against.
 
-**Decision: Oat's CSS + a small reactive layer (Preact/React via Vite).** Total ~10KB of framework.
-
-**And a consistency note:** choosing a 3KB framework over a 45KB one to shave milliseconds would contradict §6, where we argued the read-path p95 is dominated by network and serialisation, not by client compute. Rendering 50 rows is not the bottleneck. Pick the reactive layer for build velocity; take Oat for the design system because it is good, not because of its byte count.
-
-> **Awareness note:** Oat is written by Kailash Nadh, CTO of **Zerodha** — Groww's direct competitor. Using it is entirely fine (it is MIT-spirited FOSS and signals fluency with the Indian fintech engineering scene), but it is worth knowing before the reviewer notices it in `package.json` and we do not.
+Either way, the choice of CSS layer was never going to be the bottleneck. The actual client
+state — read cursors, ranked lists that reorder as items are dismissed, an attention budget
+that recomputes — needed a real reactive layer regardless of which CSS approach sat under
+it, and React was used for that from the start.
