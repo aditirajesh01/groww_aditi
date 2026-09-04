@@ -123,7 +123,20 @@ export interface WatchlistResponse {
   unread_total: number;
 }
 
-export interface SymbolRef { symbol: string; name: string; exchange: "NSE" | "BSE"; }
+export interface SymbolRef { symbol: string; name: string; exchange: "NSE" | "BSE"; sector: string; }
+
+/** Deliberately simple: shared-sector count over total watched -- a ratio,
+ *  not a model, so the reasoning behind a Discover ranking fits on the card. */
+export interface MatchRatio { shared: number; total: number; ratio: number; }
+
+export interface DiscoverCard {
+  symbol: string;
+  name: string;
+  sector: string;
+  price: PricePoint;
+  provenance: Provenance;
+  match: MatchRatio;
+}
 
 export interface SymbolDetail {
   symbol: string;

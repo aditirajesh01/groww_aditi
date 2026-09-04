@@ -157,6 +157,25 @@ class SymbolRef(Strict):
     symbol: str
     name: str
     exchange: Literal["NSE", "BSE"] = "NSE"
+    sector: str = ""
+
+
+class MatchRatio(Strict):
+    """Deliberately simple: shared-sector count over total watched. A ratio,
+    not a model -- the whole point is that the reasoning fits on the card."""
+
+    shared: int
+    total: int
+    ratio: float
+
+
+class DiscoverCard(Strict):
+    symbol: str
+    name: str
+    sector: str
+    price: PricePoint
+    provenance: Provenance
+    match: MatchRatio
 
 
 class SparklinePoint(Strict):
