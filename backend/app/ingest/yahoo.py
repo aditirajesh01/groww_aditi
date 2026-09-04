@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 import httpx
 
 from ..config import settings
-from ..universe import BY_SYMBOL
+from ..universe import BY_SYMBOL, INDEX_SYMBOL
 from .base import BarPoint, CorpAction, MarketEvent, Quote
 
 log = logging.getLogger("watchlist.yahoo")
@@ -56,6 +56,8 @@ class YahooAdapter:
         return self._client
 
     def _ticker(self, symbol: str) -> str:
+        if symbol == INDEX_SYMBOL:
+            return "^NSEI"  # NIFTY 50
         s = BY_SYMBOL.get(symbol)
         return s.yahoo_ticker if s else f"{symbol}.NS"
 
