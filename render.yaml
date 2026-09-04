@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: delta-watchlist-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: FEED_ADAPTER
+        value: simulator
+      # GEMINI_API_KEY, OPENROUTER_API_KEY, NVIDIA_API_KEY are optional --
+      # set them in the Render dashboard (Environment tab) if you want a
+      # live LLM provider. Unset, the app runs the deterministic template
+      # summariser and is fully functional.
