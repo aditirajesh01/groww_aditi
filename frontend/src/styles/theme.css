@@ -56,10 +56,16 @@
   /* --- type ------------------------------------------------------------- */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --font-display: ui-serif, "Iowan Old Style", "Source Serif 4", "Charter",
-    "Georgia", "Times New Roman", serif;
+  /* Headlines share the body grotesk rather than switching families — the
+     product's own framing is "closer to a git diff than a stock app", and a
+     serif display face reads as generic editorial polish that has nothing to
+     do with that. Weight, negative tracking and the monospace accent below
+     carry the hierarchy instead. */
+  --font-display: var(--font-sans);
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
   --text-regular: 0.9375rem;
+  --tracking-tight: -0.03em;
+  --tracking-snug: -0.015em;
 
   --radius-medium: 0.5rem;
   --radius-large: 0.875rem;
