@@ -34,7 +34,12 @@ class Settings(BaseSettings):
     # verified live against openrouter.ai/api/v1/models at deploy time.
     openrouter_model: str = "google/gemma-4-31b-it:free"
     # build.nvidia.com NIM catalog. OpenAI-compatible chat completions.
-    nvidia_model: str = "meta/llama-3.1-8b-instruct"
+    # meta/llama-3.1-8b-instruct (the obvious default) hit end-of-life
+    # 2026-08-26; verified live against this account's actual entitlements
+    # -- most catalog models 404 "not found for account" even though they're
+    # listed, so this one was picked because it actually returns a clean,
+    # non-reasoning completion, not because it's a first choice on paper.
+    nvidia_model: str = "meta/llama-3.2-11b-vision-instruct"
 
     # Cold-start quota guesses. The router replaces these with whatever the
     # provider's live 429 / quota metadata says — see llm/router.py.
