@@ -6,7 +6,9 @@ CODE 2026.
 Design writeup, research basis, and scaling analysis: [DESIGN.md](DESIGN.md).
 
 Live demo: frontend at `frontend-eight-livid-35.vercel.app`, backend at
-`delta-watchlist-backend.onrender.com/api/v1`.
+`delta-watchlist-backend.onrender.com/api/v1`. The backend runs on a free-tier host that
+sleeps after a period of inactivity — if the first load takes up to a minute, that's it
+waking up, not a bug.
 
 ## Contents
 
