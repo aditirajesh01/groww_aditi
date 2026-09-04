@@ -16,14 +16,20 @@ function read(): ThemeChoice {
   return "light";
 }
 
+const media = () => window.matchMedia("(prefers-color-scheme: dark)");
+
+/** Resolve "system" to the OS's actual current preference. Tailwind's `dark:`
+ *  variant here is driven purely by `data-theme="dark"|"light"` (see
+ *  tailwind.css's @custom-variant) so "system" has to be resolved to a real
+ *  value up front, not left as an absent attribute for a media query to
+ *  pick up — a hybrid selector-or-media dark variant isn't expressible as a
+ *  single Tailwind custom variant. */
 function apply(choice: ThemeChoice) {
   const root = document.documentElement;
-  if (choice === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", choice);
+  const resolved = choice === "system" ? (media().matches ? "dark" : "light") : choice;
+  root.setAttribute("data-theme", resolved);
 }
 
-/** Oat themes through `light-dark()` + `color-scheme`, so forcing a theme is a
- *  matter of pinning `color-scheme` on :root — see styles/theme.css. */
 export function useTheme() {
   const [choice, setChoice] = useState<ThemeChoice>(read);
 
@@ -34,6 +40,12 @@ export function useTheme() {
     } catch {
       /* not fatal */
     }
+
+    if (choice !== "system") return;
+    const mq = media();
+    const onChange = () => apply("system");
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, [choice]);
 
   const cycle = useCallback(() => {

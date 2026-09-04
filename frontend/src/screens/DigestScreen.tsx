@@ -34,12 +34,16 @@ export function DigestScreen() {
 
   if (store.status === "error") {
     return (
-      <div className="wrap section">
-        <div className="empty-note">
-          <p style={{ margin: 0 }}>
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="rounded-2xl border border-error-200 bg-error-50 p-6 dark:border-error-500/30 dark:bg-error-500/10">
+          <p className="text-sm text-error-700 dark:text-error-400">
             Could not reach the digest service: {store.error}
           </p>
-          <button type="button" className="btn" style={{ marginTop: "1rem" }} onClick={() => void store.refresh()}>
+          <button
+            type="button"
+            onClick={() => void store.refresh()}
+            className="mt-3 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+          >
             Try again
           </button>
         </div>
@@ -56,34 +60,25 @@ export function DigestScreen() {
   const variants = cardVariants(!!reduced);
 
   return (
-    <>
-      <div className="wrap">
-        <DigestHeader
-          digest={digest}
-          shown={store.items.length}
-          suppressed={store.budget.suppressed}
-          quietCount={digest.quiet.length}
-          cleared={store.cleared}
-        />
-      </div>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
+      <DigestHeader
+        digest={digest}
+        shown={store.items.length}
+        suppressed={store.budget.suppressed}
+        quietCount={digest.quiet.length}
+        cleared={store.cleared}
+      />
 
-      {/* Corrections come first. An admission that we showed a wrong number
-          outranks anything we would like to tell you today. */}
       <AnimatePresence initial={false}>
         {store.corrections.length > 0 && (
           <motion.section
-            className="wrap section"
             key="corrections"
             layout={!reduced}
-            exit={{ opacity: 0, height: 0, paddingBlock: 0 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <div className="section__head">
-              <h2 className="section__title" style={{ color: "var(--brass)" }}>
-                Corrections
-              </h2>
-            </div>
-            <ul className="stack">
+            <h2 className="mb-3 text-lg font-bold text-warning-600 dark:text-warning-400">Corrections</h2>
+            <ul className="flex flex-col gap-4">
               <AnimatePresence initial={false} custom={exitMode}>
                 {store.corrections.map((item, i) => (
                   <motion.li
@@ -105,19 +100,18 @@ export function DigestScreen() {
         )}
       </AnimatePresence>
 
-      <section className="wrap section">
+      <section>
         {store.items.length > 0 && (
-          <div className="section__head">
-            <h2 className="section__title">Ranked by attention</h2>
+          <div className="mb-3 flex items-center gap-3">
+            <h2 className="text-lg font-bold text-gray-800 dark:text-white">Ranked by attention</h2>
             {store.items.length > 1 && (
               <button
                 type="button"
-                className="btn btn--ghost btn--sm"
-                style={{ marginInlineStart: "auto" }}
                 onClick={() => {
                   setExitMode("read");
                   void store.ackAll();
                 }}
+                className="ml-auto rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
               >
                 Mark all read
               </button>
@@ -136,12 +130,7 @@ export function DigestScreen() {
             busy={store.busy || store.status === "loading"}
           />
         ) : (
-          <motion.ul
-            className="stack"
-            variants={listVariants(!!reduced)}
-            initial="hidden"
-            animate="shown"
-          >
+          <motion.ul className="flex flex-col gap-4" variants={listVariants(!!reduced)} initial="hidden" animate="shown">
             <AnimatePresence initial={false} custom={exitMode} mode="popLayout">
               {store.items.map((item, i) => (
                 <motion.li
@@ -166,11 +155,7 @@ export function DigestScreen() {
         )}
       </section>
 
-      {digest.quiet.length > 0 && (
-        <section className="wrap section">
-          <QuietList items={digest.quiet} checkedAt={digest.generated_at} />
-        </section>
-      )}
-    </>
+      {digest.quiet.length > 0 && <QuietList items={digest.quiet} checkedAt={digest.generated_at} />}
+    </div>
   );
 }

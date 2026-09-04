@@ -8,18 +8,12 @@ const VERDICT_WORD: Record<ThesisImpact["verdict"], string> = {
   NEUTRAL: "neither way",
 };
 
-/**
- * The emotional peak of the product.
- *
- * The design decision that matters here is the split: the user's own sentence
- * on the left, the dated evidence on the right, a rule between them. We are not
- * telling them what to do — we are placing their words next to the record and
- * letting the gap speak. The evidence side is the only place in the app that
- * uses the ember tint, so a contradiction is recognisable before it is read.
- *
- * It is deliberately never advisory: no verb in this component tells anyone to
- * act. It says what was believed, what was reported, and when.
- */
+const BAR_COLOR: Record<ThesisImpact["verdict"], string> = {
+  CONTRADICTS: "bg-error-500",
+  SUPPORTS: "bg-success-500",
+  NEUTRAL: "bg-gray-400",
+};
+
 export function ThesisConfrontation({
   impact,
   thesisAddedAt,
@@ -32,57 +26,60 @@ export function ThesisConfrontation({
 
   return (
     <motion.section
-      className="confront"
-      data-verdict={impact.verdict}
       aria-label={`Your thesis, checked against evidence: ${impact.verdict.toLowerCase()}`}
       initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduced ? { duration: 0 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
+      className={
+        "mt-4 overflow-hidden rounded-xl border " +
+        (contradicts
+          ? "border-error-200 bg-error-50/40 dark:border-error-500/25 dark:bg-error-500/[0.04]"
+          : "border-gray-200 bg-gray-50/60 dark:border-gray-800 dark:bg-white/[0.02]")
+      }
     >
-      <div className="confront__grid">
-        <div className="confront__side confront__side--mine">
-          <span className="confront__k">What you wrote</span>
-          <blockquote className="confront__quote">{impact.thesis}</blockquote>
-          {thesisAddedAt && (
-            <span className="confront__when">added {day(thesisAddedAt)}</span>
-          )}
+      <div className="grid grid-cols-1 divide-y divide-gray-200 sm:grid-cols-[1fr_auto_1fr] sm:divide-x sm:divide-y-0 dark:divide-gray-800">
+        <div className="p-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">What you wrote</span>
+          <blockquote className="mt-1.5 text-[15px] font-medium italic leading-snug text-gray-700 dark:text-gray-200">
+            &ldquo;{impact.thesis}&rdquo;
+          </blockquote>
+          {thesisAddedAt && <span className="mt-1.5 block text-xs text-gray-400">added {day(thesisAddedAt)}</span>}
         </div>
 
-        <div className="confront__vs" aria-hidden="true">
+        <div className="flex items-center justify-center px-2 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400 sm:py-0" aria-hidden="true">
           <motion.span
             initial={reduced ? false : { scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={
-              reduced
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 500, damping: 26, delay: 0.42 }
-            }
+            transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 26, delay: 0.42 }}
           >
             {contradicts ? "versus" : "and"}
           </motion.span>
         </div>
 
-        <div className="confront__side confront__side--evidence">
-          <span className="confront__k">What the record says</span>
-          <p className="confront__evidence">{impact.rationale}</p>
+        <div className="p-4">
+          <span className={`text-[11px] font-semibold uppercase tracking-wider ${contradicts ? "text-error-600 dark:text-error-400" : "text-gray-400"}`}>
+            What the record says
+          </span>
+          <p className="mt-1.5 text-sm leading-snug text-gray-700 dark:text-gray-200">{impact.rationale}</p>
         </div>
       </div>
 
-      <div className="confront__foot">
-        <span className="confront__conf">
-          <span>evidence points {VERDICT_WORD[impact.verdict]}</span>
-          <span className="confbar" aria-hidden="true">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-4 py-3 dark:border-gray-800">
+        <span className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          <span>Evidence points {VERDICT_WORD[impact.verdict]}</span>
+          <span className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" aria-hidden="true">
             <motion.i
+              className={`block h-full rounded-full ${BAR_COLOR[impact.verdict]}`}
               initial={reduced ? false : { width: 0 }}
               animate={{ width: `${Math.round(impact.confidence * 100)}%` }}
               transition={reduced ? { duration: 0 } : { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
             />
           </span>
-          <span className="num">{Math.round(impact.confidence * 100)}%</span>
+          <span className="font-mono font-semibold text-gray-700 dark:text-gray-200">
+            {Math.round(impact.confidence * 100)}%
+          </span>
         </span>
-        <span className="confront__disclaimer">
-          Your hypothesis, checked against dated evidence. Not advice.
-        </span>
+        <span className="text-xs text-gray-400">Your hypothesis, checked against dated evidence. Not advice.</span>
       </div>
     </motion.section>
   );

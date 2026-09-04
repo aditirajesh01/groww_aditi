@@ -4,22 +4,11 @@ import { getClient } from "@/api/client";
 import type { SymbolRef } from "@/api/types";
 import { heightCollapse } from "@/lib/motion";
 
-/**
- * Adding a symbol requires a reason, but a required field feels like a tax and
- * gets filled with junk. So the form is written as one sentence the user
- * finishes — "I'm watching ____ because ____" — with the blanks as underlined
- * gaps rather than boxes. It reads like writing a note to yourself, which is
- * exactly what a thesis is, and what makes contradiction detection possible
- * later: you cannot be shown evidence against a belief you never stated.
- */
-
 const STARTERS = [
   "watching for margin recovery",
   "want it under ₹2,400",
   "hedge for my HDFC position",
   "waiting for the capex cycle to show up in revenue",
-  "watching whether the China mix normalises",
-  "holding until the promoter pledge unwinds",
 ];
 
 export function ThesisComposer({
@@ -73,12 +62,15 @@ export function ThesisComposer({
     }
   }
 
+  const inputCls =
+    "min-w-0 flex-1 border-b-2 border-dashed border-gray-300 bg-transparent px-1 pb-1 font-medium text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-500 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-600";
+
   return (
-    <form className="compose" onSubmit={submit}>
-      <div className="compose__sentence">
+    <form onSubmit={submit} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex flex-wrap items-center gap-2 text-lg font-medium text-gray-700 dark:text-gray-200 sm:text-xl">
         <span>I&rsquo;m watching</span>
         <input
-          className="compose__blank compose__blank--sym"
+          className={`${inputCls} w-40 font-mono uppercase`}
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
           placeholder="TATAMOTORS"
@@ -89,7 +81,7 @@ export function ThesisComposer({
         <span>because I&rsquo;m</span>
         <input
           ref={thesisRef}
-          className="compose__blank"
+          className={`${inputCls} basis-64`}
           value={thesis}
           onChange={(e) => setThesis(e.target.value)}
           placeholder="watching for margin recovery"
@@ -101,11 +93,15 @@ export function ThesisComposer({
       <AnimatePresence initial={false}>
         {results.length > 0 && !chosen && (
           <motion.div key="hits" style={{ overflow: "hidden" }} {...heightCollapse(!!reduced)}>
-            <ul className="suggest">
+            <ul className="mt-3 flex flex-wrap gap-1.5">
               {results.map((r) => (
                 <li key={r.symbol}>
-                  <button type="button" onClick={() => setSymbol(r.symbol)}>
-                    {r.symbol} <span style={{ opacity: 0.6 }}>{r.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSymbol(r.symbol)}
+                    className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300"
+                  >
+                    {r.symbol} <span className="text-gray-400">{r.name}</span>
                   </button>
                 </li>
               ))}
@@ -115,8 +111,8 @@ export function ThesisComposer({
       </AnimatePresence>
 
       {thesis.trim().length === 0 && (
-        <ul className="suggest suggest--prose" aria-label="Thesis starters">
-          {STARTERS.slice(0, 4).map((s) => (
+        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Thesis starters">
+          {STARTERS.map((s) => (
             <li key={s}>
               <button
                 type="button"
@@ -124,6 +120,7 @@ export function ThesisComposer({
                   setThesis(s);
                   thesisRef.current?.focus();
                 }}
+                className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-400"
               >
                 {s}
               </button>
@@ -132,18 +129,22 @@ export function ThesisComposer({
         </ul>
       )}
 
-      <p className="compose__hint">
-        The sentence is the point. A thesis in your own words is what lets us later show you
-        evidence that runs <em>against</em> it — without one, we can only tell you that something
-        moved. You can leave it blank and add it later.
+      <p className="mt-4 text-xs leading-relaxed text-gray-400">
+        The sentence is the point. A thesis in your own words is what lets us later show you evidence
+        that runs <em>against</em> it — without one, we can only tell you that something moved. You can
+        leave it blank and add it later.
       </p>
 
-      <div className="compose__foot">
-        <button type="submit" className="btn btn--primary" disabled={busy || !symbol.trim()}>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={busy || !symbol.trim()}
+          className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 disabled:opacity-50"
+        >
           {busy ? "Adding…" : "Add to watchlist"}
         </button>
-        {chosen && <span className="eyebrow">{chosen.name} · {chosen.exchange}</span>}
-        {error && <span style={{ color: "var(--neg)", fontSize: "0.8125rem" }}>{error}</span>}
+        {chosen && <span className="text-xs font-medium text-gray-400">{chosen.name} · {chosen.exchange}</span>}
+        {error && <span className="text-xs font-medium text-error-600 dark:text-error-400">{error}</span>}
       </div>
     </form>
   );

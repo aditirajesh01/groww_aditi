@@ -29,34 +29,31 @@ export function App() {
   const { choice, cycle } = useTheme();
   const reduced = useReducedMotion();
 
-  const key =
-    route.name === "symbol" ? `symbol:${route.symbol}` : route.name;
+  const key = route.name === "symbol" ? `symbol:${route.symbol}` : route.name;
 
   return (
-    <div className="shell shell--sidebar">
-      <a href="#main" className="visually-hidden">
+    <div className="flex min-h-dvh bg-gray-50 dark:bg-gray-950">
+      <a href="#main" className="sr-only focus:not-sr-only">
         Skip to content
       </a>
 
       <Sidebar />
 
-      <div className="shell__body">
-        <header className="topbar topbar--slim">
-          <div className="topbar__inner">
-            <span className="topbar__crumb">{TITLES[route.name]}</span>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={cycle}
-              title={THEME_LABEL[choice]}
-              aria-label={THEME_LABEL[choice]}
-            >
-              {THEME_GLYPH[choice]}
-            </button>
-          </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-16 flex-none items-center justify-between border-b border-gray-200 bg-white/80 px-6 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
+          <h1 className="text-lg font-bold text-gray-800 dark:text-white">{TITLES[route.name]}</h1>
+          <button
+            type="button"
+            onClick={cycle}
+            title={THEME_LABEL[choice]}
+            aria-label={THEME_LABEL[choice]}
+            className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+          >
+            {THEME_GLYPH[choice]}
+          </button>
         </header>
 
-        <main id="main">
+        <main id="main" className="flex-1">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={key}

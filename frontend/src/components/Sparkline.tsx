@@ -1,12 +1,12 @@
 import { motion, useReducedMotion } from "motion/react";
 import { asOf, money } from "@/lib/format";
 
-/**
- * Deliberately unadorned: no axes, no grid, no tooltip theatre. The dashed line
- * is the starting level, so the shape reads as "against where it began" rather
- * than as an abstract squiggle. The stroke draws in once, which makes the
- * left-to-right direction of time explicit.
- */
+const STROKE: Record<string, string> = {
+  up: "#12b76a",
+  down: "#f04438",
+  flat: "#98a2b3",
+};
+
 export function Sparkline({
   points,
   width = 640,
@@ -32,28 +32,32 @@ export function Sparkline({
   const area = `${line} L${width},${height} L0,${height} Z`;
   const direction = values.at(-1)! > values[0] ? "up" : values.at(-1)! < values[0] ? "down" : "flat";
   const baseY = y(values[0]);
+  const color = STROKE[direction];
 
   return (
-    <figure style={{ margin: 0 }}>
+    <figure className="m-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <svg
-        className="spark"
-        data-direction={direction}
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
+        className="h-24 w-full"
         role="img"
         aria-label={`Price path over ${points.length} sessions, from ₹${money(values[0])} to ₹${money(values.at(-1)!)}`}
       >
-        <path className="spark__area" d={area} style={{ color: `var(--${direction === "down" ? "neg" : direction === "up" ? "pos" : "ink-3"})` }} />
-        <line className="spark__base" x1="0" x2={width} y1={baseY} y2={baseY} />
+        <path d={area} fill={color} opacity={0.08} />
+        <line x1="0" x2={width} y1={baseY} y2={baseY} stroke="#d0d5dd" strokeDasharray="4 4" strokeWidth="1" />
         <motion.path
-          className="spark__line"
           d={line}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           initial={reduced ? false : { pathLength: 0, opacity: 0.2 }}
           animate={{ pathLength: 1, opacity: 1 }}
           transition={reduced ? { duration: 0 } : { duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
         />
       </svg>
-      <figcaption className="eyebrow" style={{ marginTop: "0.4rem" }}>
+      <figcaption className="mt-2 text-xs font-medium text-gray-400">
         {asOf(points[0].t)} → {asOf(points.at(-1)!.t)} · dashed line is where it started
       </figcaption>
     </figure>

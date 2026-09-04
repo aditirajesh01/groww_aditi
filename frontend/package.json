@@ -10,10 +10,11 @@
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false || tsc -b"
   },
   "dependencies": {
-    "@knadh/oat": "^0.7.2",
+    "@tailwindcss/vite": "^4.3.3",
     "motion": "^13.2.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

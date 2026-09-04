@@ -1,41 +1,41 @@
+const bar = "animate-pulse rounded-md bg-gray-200 dark:bg-gray-800";
+
 /** Loading state that holds the layout it is about to become, so nothing jumps. */
 export function DigestSkeleton() {
   return (
-    <div className="wrap" aria-busy="true" aria-label="Loading your digest">
-      <div className="digest-head">
-        <div className="skel" style={{ height: "2.2rem", width: "min(22ch, 100%)" }} />
-        <div className="skel" style={{ height: "2.2rem", width: "min(16ch, 80%)", marginTop: "0.5rem" }} />
-        <div className="skel" style={{ height: "1rem", width: "min(46ch, 100%)", marginTop: "1.25rem" }} />
-        <div className="stat-row">
+    <div className="mx-auto max-w-5xl px-6 py-8" aria-busy="true" aria-label="Loading your digest">
+      <div className="rounded-2xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
+        <div className={`${bar} h-8 w-[min(22ch,100%)]`} />
+        <div className={`${bar} mt-2 h-8 w-[min(16ch,80%)]`} />
+        <div className={`${bar} mt-5 h-4 w-[min(46ch,100%)]`} />
+        <div className="mt-6 flex gap-10">
           {[0, 1, 2].map((i) => (
-            <div className="stat" key={i}>
-              <div className="skel" style={{ height: "1.2rem", width: "3rem" }} />
-              <div className="skel" style={{ height: "0.7rem", width: "5rem", marginTop: "0.35rem" }} />
+            <div key={i}>
+              <div className={`${bar} h-6 w-12`} />
+              <div className={`${bar} mt-1.5 h-3 w-20`} />
             </div>
           ))}
         </div>
       </div>
-      <div className="section">
-        <ul className="stack">
-          {[0, 1, 2].map((i) => (
-            <li key={i}>
-              <div className="card" style={{ opacity: 1 - i * 0.22 }}>
-                <div className="rail">
-                  <div className="skel" style={{ height: "1rem", width: "1.6rem" }} />
-                  <div className="skel" style={{ flex: 1, width: "4px", minHeight: "3rem" }} />
-                </div>
-                <div className="card__body">
-                  <div className="skel" style={{ height: "0.9rem", width: "9rem" }} />
-                  <div className="skel" style={{ height: "1.4rem", width: "min(38ch, 100%)", marginTop: "1rem" }} />
-                  <div className="skel" style={{ height: "1.4rem", width: "min(28ch, 80%)", marginTop: "0.4rem" }} />
-                  <div className="skel" style={{ height: "0.8rem", width: "min(52ch, 100%)", marginTop: "1rem" }} />
-                  <div className="skel" style={{ height: "0.8rem", width: "min(44ch, 90%)", marginTop: "0.35rem" }} />
-                </div>
+      <ul className="mt-6 flex flex-col gap-4">
+        {[0, 1, 2].map((i) => (
+          <li key={i} style={{ opacity: 1 - i * 0.22 }}>
+            <div className="grid grid-cols-[4rem_1fr] overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex flex-col items-center gap-2 border-r border-gray-100 p-4 dark:border-gray-800">
+                <div className={`${bar} h-4 w-6`} />
+                <div className={`${bar} h-12 w-1.5`} />
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+              <div className="p-5">
+                <div className={`${bar} h-4 w-36`} />
+                <div className={`${bar} mt-4 h-6 w-[min(38ch,100%)]`} />
+                <div className={`${bar} mt-1.5 h-6 w-[min(28ch,80%)]`} />
+                <div className={`${bar} mt-4 h-3 w-[min(52ch,100%)]`} />
+                <div className={`${bar} mt-1.5 h-3 w-[min(44ch,90%)]`} />
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

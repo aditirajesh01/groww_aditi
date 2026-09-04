@@ -11,6 +11,13 @@ import { listVariants, cardVariants } from "@/lib/motion";
 import { href } from "@/state/router";
 import { useStore } from "@/state/store";
 
+const DELTA_TONE: Record<string, string> = {
+  up: "text-success-600 dark:text-success-400",
+  down: "text-error-600 dark:text-error-400",
+  neutral: "text-gray-400",
+};
+const toneOf = (n: number) => DELTA_TONE[n > 0 ? "up" : n < 0 ? "down" : "neutral"];
+
 export function SymbolScreen({ symbol }: { symbol: string }) {
   const store = useStore();
   const reduced = useReducedMotion();
@@ -39,18 +46,20 @@ export function SymbolScreen({ symbol }: { symbol: string }) {
 
   if (error) {
     return (
-      <div className="wrap section">
-        <div className="empty-note">{error}</div>
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="rounded-2xl border border-error-200 bg-error-50 p-6 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+          {error}
+        </div>
       </div>
     );
   }
 
   if (!detail) {
     return (
-      <div className="wrap section" aria-busy="true">
-        <div className="skel" style={{ height: "2.4rem", width: "14rem" }} />
-        <div className="skel" style={{ height: "84px", width: "100%", marginTop: "1.5rem" }} />
-        <div className="skel" style={{ height: "10rem", width: "100%", marginTop: "1.5rem" }} />
+      <div className="mx-auto max-w-5xl px-6 py-8" aria-busy="true">
+        <div className="h-10 w-56 animate-pulse rounded-md bg-gray-100 dark:bg-gray-800" />
+        <div className="mt-6 h-24 w-full animate-pulse rounded-2xl bg-gray-100 dark:bg-gray-800" />
+        <div className="mt-6 h-40 w-full animate-pulse rounded-2xl bg-gray-100 dark:bg-gray-800" />
       </div>
     );
   }
@@ -58,74 +67,65 @@ export function SymbolScreen({ symbol }: { symbol: string }) {
   const p = detail.price;
 
   return (
-    <div className="wrap">
-      <header className="detail-head">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <a className="eyebrow" href={href({ name: "digest" })} style={{ textDecoration: "none" }}>
+          <a href={href({ name: "digest" })} className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400">
             ← back to digest
           </a>
-          <div className="sym__row" style={{ marginTop: "0.6rem" }}>
-            <span className="sym__ticker" style={{ fontSize: "0.875rem" }}>
-              {detail.symbol}
-            </span>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="font-mono text-sm font-bold text-gray-500">{detail.symbol}</span>
             <FreshnessChip provenance={detail.provenance} />
           </div>
-          <h1 className="detail-title">{detail.name}</h1>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-gray-800 dark:text-white sm:text-3xl">{detail.name}</h1>
         </div>
-        <div className="price">
-          <div className="price__last" style={{ fontSize: "1.5rem" }}>
-            <span className="cur">₹</span>
+        <div className="text-right">
+          <div className="font-mono text-2xl font-bold tabular-nums text-gray-800 dark:text-white">
+            <span className="mr-0.5 text-lg font-semibold text-gray-400">₹</span>
             <Ticker value={p.last} grouped />
           </div>
-          <div className="price__delta">
-            <span className="price__label">today</span>
-            <span className={p.change_pct > 0 ? "up" : p.change_pct < 0 ? "down" : "neutral"}>
-              <Ticker value={p.change_pct} signed suffix="%" from={0} />
+          <div className="mt-0.5 flex items-center justify-end gap-1.5 text-xs">
+            <span className="text-gray-400">today</span>
+            <span className={`font-mono font-semibold ${toneOf(p.change_pct)}`}>
+              <Ticker value={p.change_pct} signed suffix="%" />
             </span>
           </div>
           {p.idiosyncratic_pct != null && (
-            <div className="price__delta" style={{ marginTop: "0.15rem" }}>
-              <span className="price__label">idiosyncratic</span>
-              <span className={p.idiosyncratic_pct > 0 ? "up" : p.idiosyncratic_pct < 0 ? "down" : "neutral"}>
-                <Ticker value={p.idiosyncratic_pct} signed suffix="%" from={0} />
+            <div className="mt-0.5 flex items-center justify-end gap-1.5 text-xs">
+              <span className="text-gray-400">idiosyncratic</span>
+              <span className={`font-mono font-semibold ${toneOf(p.idiosyncratic_pct)}`}>
+                <Ticker value={p.idiosyncratic_pct} signed suffix="%" />
               </span>
             </div>
           )}
-          <div className="price__delta" style={{ marginTop: "0.15rem" }}>
-            <span className="price__label">volume z</span>
-            <span className="num">{p.vol_z.toFixed(1)}σ</span>
+          <div className="mt-0.5 flex items-center justify-end gap-1.5 text-xs">
+            <span className="text-gray-400">volume z</span>
+            <span className="font-mono font-semibold text-gray-600 dark:text-gray-300">{p.vol_z.toFixed(1)}σ</span>
           </div>
         </div>
       </header>
 
-      <section className="section">
-        <Sparkline points={detail.sparkline} />
-      </section>
+      <Sparkline points={detail.sparkline} />
 
       {detail.thesis && (
-        <section className="section">
-          <div className="section__head">
-            <h2 className="section__title">Your thesis</h2>
-          </div>
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-white">Your thesis</h2>
           <motion.blockquote
-            className="wl__thesis-quote"
-            style={{ fontSize: "1.25rem", maxWidth: "44ch" }}
             initial={reduced ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={reduced ? { duration: 0 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-xl text-xl font-medium italic text-gray-700 dark:text-gray-200"
           >
-            {detail.thesis}
+            &ldquo;{detail.thesis}&rdquo;
           </motion.blockquote>
-          {entry?.thesis_added_at && (
-            <span className="confront__when">written {day(entry.thesis_added_at)}</span>
-          )}
+          {entry?.thesis_added_at && <span className="mt-1.5 block text-xs text-gray-400">written {day(entry.thesis_added_at)}</span>}
         </section>
       )}
 
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Timeline</h2>
-          <span className="section__note">
+      <section>
+        <div className="mb-3 flex items-baseline gap-3">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white">Timeline</h2>
+          <span className="text-xs text-gray-400">
             {detail.timeline.length === 0
               ? "Nothing has cleared the gate for this symbol yet."
               : `${detail.timeline.length} recorded ${detail.timeline.length === 1 ? "change" : "changes"}, newest first. Append-only — corrections are added, never edited over.`}
@@ -133,17 +133,12 @@ export function SymbolScreen({ symbol }: { symbol: string }) {
         </div>
 
         {detail.timeline.length === 0 ? (
-          <div className="empty-note">
-            Checked as of {asOf(detail.provenance.as_of)}. Nothing here is an absence of data — it is
-            an absence of anything that passed two independent confirming factors.
+          <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400 dark:border-gray-700">
+            Checked as of {asOf(detail.provenance.as_of)}. Nothing here is an absence of data — it is an
+            absence of anything that passed two independent confirming factors.
           </div>
         ) : (
-          <motion.ul
-            className="stack timeline"
-            variants={listVariants(!!reduced)}
-            initial="hidden"
-            animate="shown"
-          >
+          <motion.ul className="flex flex-col gap-4" variants={listVariants(!!reduced)} initial="hidden" animate="shown">
             {detail.timeline.map((item, i) => (
               <motion.li key={item.event_id} variants={cardVariants(!!reduced)}>
                 <ChangeCard item={item} rank={i + 1} readOnly thesisAddedAt={entry?.thesis_added_at} />

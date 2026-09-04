@@ -34,44 +34,53 @@ export function Sidebar() {
   const store = useStore();
 
   return (
-    <aside className="sidebar">
-      <a className="sidebar__brand" href={href({ name: "digest" })}>
-        <span className="sidebar__mark" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="2" width="20" height="20" rx="6" fill="var(--brand)" />
-            <path d="M7 14.5 10.5 10l3 3.2L17 8.5" stroke="white" strokeWidth="1.8"
+    <aside className="flex h-dvh w-[290px] flex-none flex-col border-r border-gray-200 bg-white px-5 py-6 dark:border-gray-800 dark:bg-gray-900">
+      <a href={href({ name: "digest" })} className="flex items-center gap-2.5 px-1">
+        <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-500 text-white shadow-sm shadow-brand-500/30">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M7 14.5 10.5 10l3 3.2L17 8.5" stroke="white" strokeWidth="2"
               strokeLinecap="round" strokeLinejoin="round" fill="none" />
           </svg>
         </span>
-        <span className="sidebar__brand-text">
-          Watchlist
-          <small>changelog · read cursor</small>
+        <span className="flex flex-col leading-tight">
+          <span className="text-base font-bold tracking-tight text-gray-800 dark:text-white">Watchlist</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Changelog · Read Cursor</span>
         </span>
       </a>
 
-      <nav className="sidebar__nav" aria-label="Primary">
-        <span className="sidebar__section">Menu</span>
+      <nav aria-label="Primary" className="mt-8 flex flex-col gap-1">
+        <span className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Menu</span>
         {ITEMS.map((item) => {
           const active = route.name === item.name;
           return (
             <a
               key={item.name}
               href={href({ name: item.name })}
-              className="sidebar__link"
-              data-active={active || undefined}
+              className={
+                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors " +
+                (active
+                  ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white")
+              }
             >
-              <span className="sidebar__icon">{ICONS[item.name]}</span>
+              <span className={active ? "text-brand-500" : "text-gray-400 group-hover:text-gray-500"}>
+                {ICONS[item.name]}
+              </span>
               {item.label}
               {item.name === "digest" && store.unread > 0 && (
-                <span className="sidebar__badge">{store.unread}</span>
+                <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-brand-500 px-1.5 text-[11px] font-bold text-white">
+                  {store.unread}
+                </span>
               )}
             </a>
           );
         })}
       </nav>
 
-      <div className="sidebar__foot">
-        <span className="sidebar__mode">{store.mode === "fixtures" ? "Fixture data" : "Live API"}</span>
+      <div className="mt-auto flex flex-col gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <span className="w-fit rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+          {store.mode === "fixtures" ? "Fixture data" : "Live API"}
+        </span>
       </div>
     </aside>
   );
