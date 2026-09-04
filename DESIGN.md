@@ -174,26 +174,42 @@ The read path never touches the compute path.
 
 ---
 
-## 7. LLM cost
+## 7. LLM cost (real numbers, Claude pricing)
 
-The naive design is what kills these products.
+Per symbol-event summary: ~2,000 input tokens (cached system prefix + article + signal context), ~300 output.
+Claude Opus 5 at $5/$25 per MTok => **~$0.0175 per call.**
 
 **Naive** — summarise per user per view:
 10k users x 1 check-in/day x ~20 changed symbols = **200,000 calls/day**
-@ ~1.5k in / 300 out => **~$400-1,000/day = $12k-30k/month.** Absurd at 10k users.
+=> **~$3,500/day ~= $105,000/month.** The design is dead on arrival.
 
-**Ours** — summarise per symbol-event, once, shared by every subscriber:
-only symbols passing the global gate get summarised (~3-8% of universe on a normal day)
-=> **~100-300 calls/day => ~$45/month, flat.**
+**Ours** — summarise per symbol-event once, shared by every subscriber.
+Only symbols passing the global gate get summarised: ~100-300/day.
 
-> **Marginal LLM cost per additional user: 0.** It falls straight out of the symbol/user tier split, and it is the single most important economic property of this architecture.
+| Layer | Volume/day | Cost/month |
+|---|---|---|
+| Symbol-event summaries (Opus 5, Batch API -50%, cached prefix) | ~300 | **~$70** |
+| Thesis-contradiction checks (clustered, cosine-gated, batched) | ~500 | **~$130** |
+| Embeddings (Voyage, finance-domain) | ~300 events + one-time theses | **~$5** |
+| **Total at 10,000 users** | | **~$200/month** |
 
-- Cache key `(symbol, event_id, content_hash)` — a corrected article regenerates; an unchanged one never does.
-- **Personalisation is arithmetic, not inference.** The summary is generic and factual ("Q2 gross margin fell 180bps"); the personal part (does this contradict your thesis? how large is your position?) is deterministic scoring on top.
-- The one justified per-user inference is thesis contradiction. Bounded by: (a) only when the symbol already passed the global gate *and* the user has a thesis; (b) embed the thesis once at write time, cosine-gate against event embeddings before generating — a cheap retrieval gate in front of expensive generation; (c) hard per-user daily cap.
-- Digests are latency-insensitive => batch API / off-peak pricing.
+> **Marginal LLM cost per additional user: 0.** Nothing in the table above has `users` in its growth term.
 
----
+### Why contradiction detection doesn't blow this up
+Naively, checking each user's thesis against each event is O(users). Instead we **embed every thesis once at write time and cluster theses per symbol**: many users write semantically the same belief ("waiting for margin recovery" / "watching margins"). A symbol typically carries 5-20 distinct belief clusters, so generation is O(events x distinct beliefs) — which **saturates** rather than growing with the user base. Dedupe by *semantic belief*, not by user. This is the single sharpest scaling idea in the design.
+
+Gating chain before any generation: symbol passed the global gate -> user has a thesis -> `cosine(event_embedding, thesis_cluster) > tau` -> event is a contradiction candidate. ~20% survive. Hard per-user daily cap on top.
+
+### Cost mechanics that actually matter
+- **Batch API = exactly 50% off**, up to 100k requests/batch, most complete within an hour. Digests are not latency-sensitive, so **every scheduled summarisation goes through Batches.** Only the "user opened a symbol we've never summarised" path is synchronous.
+- **Prompt caching:** cache reads are ~0.1x base input; writes are 1.25x (5-min TTL) or 2x (1-hour). Our system prefix + rubric is byte-stable, so it caches cleanly. **Inside a Batch request use the 1-hour TTL** — batch requests spread over up to an hour and would miss a 5-minute entry.
+- **Cache-stampede rule:** a cache entry is only readable once the first response *begins streaming*. N parallel requests with an identical prefix all pay full price. So on the nightly fan-out: send one request, await first token, then fire the rest.
+- **Never put anything volatile before the last `cache_control` breakpoint** — a timestamp or per-request id in the system prompt silently invalidates everything. Verify with `usage.cache_read_input_tokens`; if it is 0 across repeated calls, something is invalidating.
+
+### Model choice
+Default **`claude-opus-5`** everywhere, `thinking: {type: "adaptive"}`, `output_config.effort` tuned per route (`low` for bulk summarisation, `high` for contradiction reasoning). If we ever want the bulk summariser cheaper, `claude-haiku-4-5` at $1/$5 takes that ~$70 line to ~$16 — but that is a quality tradeoff and a deliberate decision, not a default.
+
+**Embeddings:** Anthropic does not ship an embeddings model; Voyage AI is the recommended provider and has **finance-domain models**, which is exactly the retrieval quality the thesis gate needs.
 
 ## 8. Stale, delayed and conflicting data
 
@@ -223,3 +239,17 @@ No custom ML training. **No recommendation engine, ever, deliberately.**
 | `Barisaksel/finomaly` | Modular rule + ML anomaly library | Good structural reference for a pluggable detector interface. |
 
 **None implement** watch-thesis or contradiction detection, per-user materiality, read-cursor changelog semantics, or drift / correlation-break signals. The differentiators hold.
+
+---
+
+## 11. Frontend
+
+**Oat** (`knadh/oat`) — 6KB CSS + 2.2KB JS, zero dependency, semantic-HTML-first, theming via CSS variables, automatic dark mode. Genuinely excellent, and we use it **for the design layer**.
+
+But Oat is a CSS/component library, not a reactive framework. This app has real client state — read cursors, optimistic dismissal, ranked lists that reorder, filters, an attention budget that recomputes. Oat has no state model, so it does not replace the reactive layer.
+
+**Decision: Oat's CSS + a small reactive layer (Preact/React via Vite).** Total ~10KB of framework.
+
+**And a consistency note:** choosing a 3KB framework over a 45KB one to shave milliseconds would contradict §6, where we argued the read-path p95 is dominated by network and serialisation, not by client compute. Rendering 50 rows is not the bottleneck. Pick the reactive layer for build velocity; take Oat for the design system because it is good, not because of its byte count.
+
+> **Awareness note:** Oat is written by Kailash Nadh, CTO of **Zerodha** — Groww's direct competitor. Using it is entirely fine (it is MIT-spirited FOSS and signals fluency with the Indian fintech engineering scene), but it is worth knowing before the reviewer notices it in `package.json` and we do not.
