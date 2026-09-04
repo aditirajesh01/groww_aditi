@@ -203,18 +203,42 @@ async def generate_verdicts(
         if existing.scalar_one_or_none() is not None:
             continue
 
-        verdict = await llm_router.check_thesis(
-            session,
-            ThesisRequest(
-                symbol=event.symbol,
-                name=event.name,
-                event_id=event.event_id,
-                cluster_id=cluster.id,
-                exemplar_thesis=cluster.exemplar,
-                headline=event.headline,
-                evidence=evidence,
-            ),
+        request = ThesisRequest(
+            symbol=event.symbol,
+            name=event.name,
+            event_id=event.event_id,
+            cluster_id=cluster.id,
+            exemplar_thesis=cluster.exemplar,
+            headline=event.headline,
+            evidence=evidence,
         )
+        verdict = await llm_router.check_thesis(session, request)
+
+        # --- a two-factor gate applied to the verdict itself ---------------
+        # Free-tier models reliably write case-specific rationale prose but
+        # are known to under-classify and to emit a canned, uncalibrated
+        # confidence regardless of the actual case (observed live: NVIDIA's
+        # llama-3.2-11b returning NEUTRAL/0.20 on every request, identical
+        # across unrelated symbols, while the rationale text plainly engages
+        # with the evidence). The same "never trust one signal alone"
+        # principle this app applies to price data applies here: cross-check
+        # a hedged LLM verdict against the deterministic lexical check before
+        # accepting it. The lexical check is free (no network call) and
+        # already exists as the template provider's own floor.
+        if verdict.get("verdict") == "NEUTRAL" and verdict.get("provider") != "template":
+            lexical = await llm_router.template.check_thesis(request)
+            if lexical["verdict"] != "NEUTRAL" and lexical["confidence"] > verdict.get(
+                "confidence", 0.0
+            ):
+                log.info(
+                    "%s: %s verdict NEUTRAL(%.2f) overridden by lexical %s(%.2f)",
+                    event.symbol,
+                    verdict.get("provider"),
+                    verdict.get("confidence", 0.0),
+                    lexical["verdict"],
+                    lexical["confidence"],
+                )
+                verdict = {**lexical, "provider": f"{verdict.get('provider')}+lexical"}
 
         session.add(
             ThesisVerdict(

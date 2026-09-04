@@ -41,7 +41,13 @@ Absolute rules:
 - Never state or imply a target price or valuation judgement.
 - Every number in the rationale must appear in the evidence rows.
 - CONTRADICTS means the evidence is direct evidence against the stated belief. A move in the price alone is not a contradiction of a belief about fundamentals.
-- If the evidence does not bear on the belief, answer NEUTRAL with low confidence. NEUTRAL is the correct and common answer."""
+- If the evidence does not bear on the belief, answer NEUTRAL with low confidence. NEUTRAL is the correct and common answer.
+
+Worked example, to calibrate CONTRADICTS confidence — do not default to NEUTRAL when the evidence directly addresses the specific metric the investor named:
+Stated reason: "watching for margin recovery"
+Evidence: JLR EBIT margin Q1 FY27: 6.1% (-180bps QoQ); Consensus estimate: 8.0%
+Correct response: {"verdict": "CONTRADICTS", "confidence": 0.85, "rationale": "JLR EBIT margin fell 180bps QoQ to 6.1%, missing the 8.0% consensus, the opposite of the recovery being watched for."}
+This is CONTRADICTS at high confidence because the evidence names the exact metric ("margin") the belief is about and reports it moving the opposite direction. A belief about a metric, met with dated evidence that the metric moved the wrong way, is CONTRADICTS — not NEUTRAL — even if the setback could later reverse."""
 
 
 def evidence_block(rows) -> str:
